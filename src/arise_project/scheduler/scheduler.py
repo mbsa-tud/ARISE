@@ -4,21 +4,18 @@
 Module defining the 'traditional' scheduler algorithm
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import time
 from copy import deepcopy
 
 import networkx as nx
-
 from networkx import MultiDiGraph
-from networkx.drawing.nx_agraph import to_agraph
 
-from src.arise_project.config.paths import DIR_DATA_OUTPUT_PATH
 from src.arise_project.model.scenario import Scenario
 
 
@@ -221,42 +218,3 @@ class Scheduler:
 
         print(f"\nMinimum time & energy sum: {min_time_energy_sum_path_nodes} [{min_time_energy_sum_length:.3f}]")
         print(f"Specifically: {min_time_energy_sum_path_edges_weights} ")
-
-        # Convert to AGraph (PyGraphviz)
-        A = to_agraph(self._product_state_graph)
-
-        # Global attributes
-        A.graph_attr.update(dpi="300", size="10,10")
-        A.node_attr.update(style="filled", fillcolor="lightblue", fontname="Arial")
-        A.edge_attr.update(fontname="Arial")
-
-        # Set individual node attributes (color, shape, size)
-        for node in self._product_state_graph.nodes(data=True):
-            n = A.get_node(node[0])
-            n.attr['color'] = "black"
-            n.attr['style'] = 'filled'
-            n.attr['fillcolor'] = "lightblue"
-            n.attr['fontsize'] = 12
-
-        # Set individual edge labels
-        for u, v, k, data in self._product_state_graph.edges(keys=True, data=True):
-
-            e = A.get_edge(u, v, k)
-            e.attr['label'] = data['params']
-            e.attr['fontsize'] = 6
-
-        idx = 0
-
-        # Color the edges associated with the shortest path green (for one specific weight)
-        for u, v in zip(min_time_energy_sum_path_nodes, min_time_energy_sum_path_nodes[1:]):
-
-            e = A.get_edge(u, v, min_time_energy_sum_path_edges[idx])
-            e.attr['color'] = "forestgreen"
-            e.attr['fontcolor'] = "forestgreen"
-
-            idx += 1
-
-        A.layout(prog='dot')
-        A.draw(DIR_DATA_OUTPUT_PATH / "scheduler_product_state_graph.svg")
-
-        print("\nDrawing processing state graph completed. Saved image to disk.")

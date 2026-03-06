@@ -5,11 +5,11 @@ Module containing the functions used to train DQN and for inference.
 Developed with the help of AI (partly AI-generated).
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import time
 
@@ -94,7 +94,7 @@ def run_inference(count: int = 1, quick_eval: bool = False):
     original_env = FactoryEnv(scenario, alpha=1.0, beta=1.0, max_steps=200, seed=999, use_reliability=True, output_action_state=False)
     env = Monitor(original_env)
 
-    input_final_filepath = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "dqn_factory_final"  # "factory_dqn_final_DQN_2_20251111_perfect"
+    input_final_filepath = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "factory_dqn_final"  # "factory_dqn_final_DQN_2_20251111_perfect"
     input_best_filepath = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "logs" / "factory_dqn_best"  # "factory_dqn_best_DQN_2_20251111_great.zip"
 
     model = DQN.load(input_final_filepath, env=env)
