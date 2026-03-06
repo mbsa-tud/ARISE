@@ -1,0 +1,48 @@
+--> DQN evaluation - Mean reward: 1492.068 ± 0.737
+
+--- Round 1 ---
+1. (PL01, TT04, TS01) -> {'PL01': Initial [CM02]}
+2. (PL01, CT01, CS02) -> {'PL01': CT01 [CM02]}
+3. (PL01, TT30, TS01) -> {'PL01': CT01 [DM02]}
+4. (PL01, DT01, DS02) -> {'PL01': CT01, DT01 [DM02]}
+5. (PL01, TT39, TS01) -> {'PL01': CT01, DT01 [MM02]}
+6. (PL01, MT01, MS02) -> {'PL01': CT01, DT01, MT01 [MM02]}
+7. (PL01, TT13, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+
+--- Round 2 ---
+1. (PL01, TT04, TS01) -> {'PL01': Initial [CM02]}
+2. (PL01, CT01, CS02) -> {'PL01': CT01 [CM02]}
+3. (PL01, TT30, TS01) -> {'PL01': CT01 [DM02]}
+4. (PL01, DT01, DS02) -> {'PL01': CT01, DT01 [DM02]}
+5. (PL01, TT39, TS01) -> {'PL01': CT01, DT01 [MM02]}
+6. (PL01, MT01, MS02) -> {'PL01': CT01, DT01, MT01 [MM02]}
+7. (PL01, TT13, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+
+--- Round 3 ---
+1. (PL01, TT04, TS01) -> {'PL01': Initial [CM02]}
+2. (PL01, CT01, CS02) -> {'PL01': CT01 [CM02]}
+3. (PL01, TT30, TS01) -> {'PL01': CT01 [DM02]}
+4. (PL01, DT01, DS02) -> {'PL01': CT01, DT01 [DM02]}
+5. (PL01, TT39, TS01) -> {'PL01': CT01, DT01 [MM02]}
+6. (PL01, MT01, MS02) -> {'PL01': CT01, DT01, MT01 [MM02]}
+7. (PL01, TT13, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+
+--- Round 4 ---
+1. (PL01, TT04, TS01) -> {'PL01': Initial [CM02]}
+2. (PL01, CT01, CS02) -> {'PL01': CT01 [CM02]}
+3. (PL01, TT30, TS01) -> {'PL01': CT01 [DM02]}
+4. (PL01, DT01, DS02) -> {'PL01': CT01, DT01 [DM02]}
+5. (PL01, TT39, TS01) -> {'PL01': CT01, DT01 [MM02]}
+6. (PL01, MT01, MS02) -> {'PL01': CT01, DT01, MT01 [MM02]}
+7. (PL01, TT13, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+
+--- Round 5 ---
+1. (PL01, TT04, TS01) -> {'PL01': Initial [CM02]}
+2. (PL01, CT01, CS02) -> {'PL01': CT01 [CM02]}
+3. (PL01, TT30, TS01) -> {'PL01': CT01 [DM02]}
+4. (PL01, DT01, DS02) -> {'PL01': CT01, DT01 [DM02]}
+5. (PL01, TT39, TS01) -> {'PL01': CT01, DT01 [MM02]}
+6. (PL01, MT01, MS02) -> {'PL01': CT01, DT01, MT01 [MM02]}
+7. (PL01, TT13, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+
+Shortest sequence until done: 7

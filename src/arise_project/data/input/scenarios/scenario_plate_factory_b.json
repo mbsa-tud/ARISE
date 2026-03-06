@@ -1,0 +1,152 @@
+{
+  "factory": {
+    "storage_machines": [
+      {
+        "class": "StorageMachine",
+        "name": "ST1",
+        "x": 0.0,
+        "y": 0.4,
+        "skill_params": {
+          "store_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          },
+          "retrieve_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+
+        }
+      }
+    ],
+    "processing_machines": [
+      {
+        "class": "MillingMachine",
+        "name": "MM1",
+        "x": 0.2,
+        "y": 0.2,
+        "skill_params": {
+          "milling_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        }
+      },
+      {
+        "class": "MillingMachine",
+        "name": "MM2",
+        "x": 0.45,
+        "y": 0.2,
+        "skill_params": {
+          "milling_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 0.995
+          }
+        }
+      },
+      {
+        "class": "CuttingMachine",
+        "name": "CM1",
+        "x": 0.7,
+        "y": 0.5,
+        "skill_params": {
+          "cutting_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        }
+      },
+      {
+        "class": "CuttingMachine",
+        "name": "CM2",
+        "x": 0.7,
+        "y": 0.3,
+        "skill_params": {
+          "cutting_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM1",
+        "x": 0.2,
+        "y": 0.6,
+        "skill_params": {
+          "drilling_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM2",
+        "x": 0.45,
+        "y": 0.6,
+        "skill_params": {
+          "drilling_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        }
+      }
+    ],
+    "transporter_machines": [
+      {
+        "class": "AutomatedGuidedVehicle",
+        "name": "AGV1",
+        "skill_params": {
+          "transport_skill": {
+            "time_factor": 1.0,
+            "energy_factor": 1.0,
+            "reliability": 1.0
+          }
+        },
+        "from": ["*"],
+        "to": ["*"]
+      }
+    ]
+  },
+  "product": {
+    "class": "Plate",
+    "count": 1,
+    "starting_location": "ST1",
+    "target_location": "ST1",
+    "params": {
+      "width": 100.0,
+      "height": 100.0
+    },
+    "processing_tasks": [
+      {
+        "class": "DrillingTask",
+        "params": {
+          "center_x": 2.0,
+          "center_y": 2.0,
+          "radius": 2.0
+        }
+      },
+      {
+        "class": "MillingTask",
+        "params": {
+          "total_area": 5.0
+        }
+      },
+      {
+        "class": "CuttingTask",
+        "params": {
+          "total_length": 7.0
+        }
+      }
+    ]
+  }
+}

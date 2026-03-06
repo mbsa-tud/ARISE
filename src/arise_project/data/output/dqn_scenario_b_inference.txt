@@ -1,0 +1,53 @@
+--> DQN evaluation - Mean reward: 1492.714 ± 0.801
+
+--- Round 1 ---
+1. (PL01, TT05, TS01) -> {'PL01': Initial [DM01]}
+2. (PL01, DT01, DS01) -> {'PL01': DT01 [DM01]}
+3. (PL01, TT35, TS01) -> {'PL01': DT01 [CM02]}
+4. (PL01, CT01, CS02) -> {'PL01': CT01, DT01 [CM02]}
+5. (PL01, TT26, TS01) -> {'PL01': CT01, DT01 [MM01]}
+6. (PL01, MT01, MS01) -> {'PL01': CT01, DT01, MT01 [MM01]}
+7. (PL01, TT07, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+Time 15.37 & Energy 15.37 -> 0.00631 seconds
+
+--- Round 2 ---
+1. (PL01, TT05, TS01) -> {'PL01': Initial [DM01]}
+2. (PL01, DT01, DS01) -> {'PL01': DT01 [DM01]}
+3. (PL01, TT35, TS01) -> {'PL01': DT01 [CM02]}
+4. (PL01, CT01, CS02) -> {'PL01': CT01, DT01 [CM02]}
+5. (PL01, TT26, TS01) -> {'PL01': CT01, DT01 [MM01]}
+6. (PL01, MT01, MS01) -> {'PL01': CT01, DT01, MT01 [MM01]}
+7. (PL01, TT07, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+Time 15.40 & Energy 15.40 -> 0.00620 seconds
+
+--- Round 3 ---
+1. (PL01, TT05, TS01) -> {'PL01': Initial [DM01]}
+2. (PL01, DT01, DS01) -> {'PL01': DT01 [DM01]}
+3. (PL01, TT35, TS01) -> {'PL01': DT01 [CM02]}
+4. (PL01, CT01, CS02) -> {'PL01': CT01, DT01 [CM02]}
+5. (PL01, TT26, TS01) -> {'PL01': CT01, DT01 [MM01]}
+6. (PL01, MT01, MS01) -> {'PL01': CT01, DT01, MT01 [MM01]}
+7. (PL01, TT07, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+Time 16.03 & Energy 16.03 -> 0.00418 seconds
+
+--- Round 4 ---
+1. (PL01, TT05, TS01) -> {'PL01': Initial [DM01]}
+2. (PL01, DT01, DS01) -> {'PL01': DT01 [DM01]}
+3. (PL01, TT35, TS01) -> {'PL01': DT01 [CM02]}
+4. (PL01, CT01, CS02) -> {'PL01': CT01, DT01 [CM02]}
+5. (PL01, TT26, TS01) -> {'PL01': CT01, DT01 [MM01]}
+6. (PL01, MT01, MS01) -> {'PL01': CT01, DT01, MT01 [MM01]}
+7. (PL01, TT07, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+Time 15.37 & Energy 15.37 -> 0.00437 seconds
+
+--- Round 5 ---
+1. (PL01, TT05, TS01) -> {'PL01': Initial [DM01]}
+2. (PL01, DT01, DS01) -> {'PL01': DT01 [DM01]}
+3. (PL01, TT35, TS01) -> {'PL01': DT01 [CM02]}
+4. (PL01, CT01, CS02) -> {'PL01': CT01, DT01 [CM02]}
+5. (PL01, TT26, TS01) -> {'PL01': CT01, DT01 [MM01]}
+6. (PL01, MT01, MS01) -> {'PL01': CT01, DT01, MT01 [MM01]}
+7. (PL01, TT07, TS01) -> {'PL01': CT01, DT01, MT01 [SM01]}
+Time 15.64 & Energy 15.64 -> 0.00446 seconds
+
+Shortest sequence until done: 7

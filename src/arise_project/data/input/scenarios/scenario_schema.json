@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "factory": {
+      "type": "object",
+      "properties": {
+        "storage_machines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "class",
+              "name",
+              "x",
+              "y"
+            ]
+          }
+        },
+        "processing_machines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "class",
+              "name",
+              "x",
+              "y"
+            ]
+          }
+        },
+        "transporter_machines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "from": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "to": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "class",
+              "name",
+              "from",
+              "to"
+            ]
+          }
+        }
+      },
+      "required": [
+        "storage_machines",
+        "processing_machines",
+        "transporter_machines"
+      ]
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "starting_location": {
+          "type": "string"
+        },
+        "target_location": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ]
+        },
+        "processing_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "type": "string"
+              },
+              "params": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "class",
+              "params"
+            ]
+          }
+        }
+      },
+      "required": [
+        "class",
+        "count",
+        "starting_location",
+        "target_location",
+        "params",
+        "processing_tasks"
+      ]
+    }
+  },
+  "required": [
+    "factory",
+    "product"
+  ]
+}

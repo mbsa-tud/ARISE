@@ -1,0 +1,15 @@
+[Q] Episode 500/3000 | avg return(100)=-69.110
+[Q] Episode 1000/3000 | avg return(100)=-56.505
+[Q] Episode 1500/3000 | avg return(100)=-53.722
+[Q] Episode 2000/3000 | avg return(100)=-35.853
+[Q] Episode 2500/3000 | avg return(100)=-34.721
+[Q] Episode 3000/3000 | avg return(100)=-33.006
+1. (PL01, TT05, TS01)
+2. (PL01, TT36, TS01)
+3. (PL01, DT01, DS02)
+4. (PL01, TT41, TS01)
+5. (PL01, CT01, CS02)
+6. (PL01, TT27, TS01)
+7. (PL01, TT14, TS01)
+8. (PL01, MT01, MS01)
+9. (PL01, TT07, TS01)
