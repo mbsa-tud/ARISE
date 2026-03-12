@@ -11,7 +11,10 @@ Version: 0.0.3
 __author__ = "Patrick Fischer"
 __version__ = "0.0.3"
 
+import json
 import time
+import shutil
+from pathlib import Path
 
 from stable_baselines3 import DQN
 from stable_baselines3.common.monitor import Monitor
@@ -19,16 +22,80 @@ from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
 
-from src.arise_project.config.paths import DIR_DATA_INPUT_SCENARIOS_JSON_PATH, DIR_DATA_OUTPUT_DQN_MODELS_PATH
+from jsonschema import validate, ValidationError
+
+from src.arise_project.config.paths import DIR_NAME_LOGS, FILE_NAME_DQN_CONFIG, FILE_NAME_BEST_MODEL, \
+    FILE_NAME_FINAL_MODEL, DIR_NAME_DQN, DIR_NAME_MODELS, DIR_NAME_BACKUP
+
+from src.arise_project.tools.hash_generation import get_canonical_hash_scenario_json, get_canonical_hash_dqn_config_json
+from src.arise_project.config.paths import FILE_DQN_CONFIG_JSON_PATH
 from src.arise_project.model.scenario import Scenario
 from src.arise_project.scheduler.factory_gym_env import FactoryEnv
 
 
-def run_train():
+def get_output_dir_path(scenario_file_path: Path) -> Path:
+    """
+    Calculate canonical hash, create directory name and make directory if it doesn't exist yet.
+    """
+
+    hash_str = get_canonical_hash_scenario_json(file_path=scenario_file_path)
+    output_dir_path = scenario_file_path.parent / f"{scenario_file_path.stem}_{hash_str}"
+
+    return output_dir_path
+
+
+def get_dqn_model_dir_path(scenario_file_path: Path, output_dir_path: Path) -> Path:
+
+    dqn_file_path = scenario_file_path.parent / FILE_NAME_DQN_CONFIG
+    hash_str = get_canonical_hash_dqn_config_json(dqn_file_path)
+
+    dqn_model_dir_path = output_dir_path / DIR_NAME_DQN / f"{dqn_file_path.stem}_{hash_str}"
+
+    return dqn_model_dir_path
+
+
+def load_dqn_config(scenario_file_path: Path) -> dict:
+    """
+    Loads and validates the DQN configuration JSON file that is expected to exist within the same directory
+    as the scenario file.
+    """
+
+    dqn_config_file_path = scenario_file_path.parent / FILE_NAME_DQN_CONFIG
+
+    if not dqn_config_file_path.exists():
+        raise FileNotFoundError(f"The file '{dqn_config_file_path.name}' needs to be in the same directory as the scenario file.")
+
+    with open(dqn_config_file_path, 'r') as json_file:
+        dqn_config_dict = json.load(json_file)
+
+    with open(FILE_DQN_CONFIG_JSON_PATH, 'r') as schema_file:
+        schema = json.load(schema_file)
+
+    # Validate the JSON data against the schema
+    try:
+        validate(instance=dqn_config_dict, schema=schema)
+
+    except ValidationError as e:
+        print("Unable to load DQN configuration due to JSON validation error:", e.message)
+
+    return dqn_config_dict
+
+
+def run_training(scenario_file_path: Path):
+
+    # Load the DQN training configuration
+    dqn_config_dict = load_dqn_config(scenario_file_path=scenario_file_path)
 
     # Load a scenario (product and factory)
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory_b.json")
-    train_env = FactoryEnv(scenario, alpha=1.0, beta=1.0, max_steps=200, seed=0, use_reliability=True)
+    scenario = Scenario(file_path=scenario_file_path)
+
+    # Build the training environment based on the DQN configuration file
+    train_env = FactoryEnv(scenario,
+                           alpha=dqn_config_dict["environment"]["alpha"],
+                           beta=dqn_config_dict["environment"]["beta"],
+                           max_steps=dqn_config_dict["environment"]["max_steps"],
+                           seed=dqn_config_dict["environment"]["training_seed"],
+                           use_reliability=dqn_config_dict["environment"]["use_reliability"])
 
     check_env(train_env, warn=True)
     train_env = Monitor(train_env)
@@ -36,68 +103,120 @@ def run_train():
     # Reset unique ID counters
     Scenario.reset_all()
 
-    # Evaluation environment (new scenario clone)
-    eval_scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory_b.json")
-    eval_env = FactoryEnv(eval_scenario, alpha=1.0, beta=1.0, max_steps=200, seed=123, use_reliability=True)
+    # Create a new scenario clone for evaluation
+    eval_scenario = Scenario(file_path=scenario_file_path)
+
+    # Build the evaluation environment based on the DQN configuration file
+    eval_env = FactoryEnv(eval_scenario,
+                          alpha=dqn_config_dict["environment"]["alpha"],
+                          beta=dqn_config_dict["environment"]["beta"],
+                          max_steps=dqn_config_dict["environment"]["max_steps"],
+                          seed=dqn_config_dict["environment"]["evaluation_seed"],
+                          use_reliability=dqn_config_dict["environment"]["use_reliability"])
 
     check_env(eval_env, warn=True)
     eval_env = Monitor(eval_env)
 
+    # Get scenario output directory path (based on hash value of scenario JSON file)
+    output_dir_path = get_output_dir_path(scenario_file_path=scenario_file_path)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Get dqn model output directory path (based on hash value of dqn config JSON file)
+    output_dqn_dir_path = get_dqn_model_dir_path(scenario_file_path=scenario_file_path, output_dir_path=output_dir_path)
+    output_dqn_dir_path.mkdir(parents=True, exist_ok=True)
+
     # Define log output (for tensorboard)
-    logs_path = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "logs"
+    logs_path = output_dqn_dir_path / DIR_NAME_LOGS
     logs_path.mkdir(parents=True, exist_ok=True)
+
+    # Define model output (best & final models)
+    models_path = output_dqn_dir_path / DIR_NAME_MODELS
+    models_path.mkdir(parents=True, exist_ok=True)
 
     # For dict observation: MultiInputPolicy
     model = DQN(
-        policy="MultiInputPolicy",
+        policy=dqn_config_dict["training"]["policy"],
         env=train_env,
-        learning_rate=3e-4,
-        buffer_size=100_000,
-        learning_starts=1_000,
-        batch_size=256,
-        gamma=0.99,
-        target_update_interval=1_000,
-        train_freq=16,
-        gradient_steps=8,
-        exploration_fraction=0.20,
-        exploration_final_eps=0.05,
-        tensorboard_log=logs_path,
+        learning_rate=dqn_config_dict["training"]["learning_rate"],
+        buffer_size=dqn_config_dict["training"]["buffer_size"],
+        learning_starts=dqn_config_dict["training"]["learning_starts"],
+        batch_size=dqn_config_dict["training"]["batch_size"],
+        gamma=dqn_config_dict["training"]["gamma"],
+        target_update_interval=dqn_config_dict["training"]["target_update_interval"],
+        train_freq=dqn_config_dict["training"]["train_freq"],
+        gradient_steps=dqn_config_dict["training"]["gradient_steps"],
+        exploration_fraction=dqn_config_dict["training"]["exploration_fraction"],
+        exploration_final_eps=dqn_config_dict["training"]["exploration_final_eps"],
+        tensorboard_log=str(logs_path),
         verbose=1,
     )
 
     # Periodic evaluation
     eval_cb = EvalCallback(
-        eval_env,
-        best_model_save_path=logs_path,
-        log_path=logs_path,
-        eval_freq=5_000,
-        deterministic=True,
-        render=False,
+        eval_env=eval_env,
+        best_model_save_path=str(models_path),
+        log_path=str(logs_path),
+        eval_freq=dqn_config_dict["evaluation"]["eval_freq"],
+        deterministic=dqn_config_dict["evaluation"]["deterministic"],
+        render=dqn_config_dict["evaluation"]["render"],
     )
 
     start_time = time.time()
 
     # Start training the model
-    model.learn(total_timesteps=250_000, callback=eval_cb)
+    model.learn(total_timesteps=dqn_config_dict["training"]["total_timesteps"], callback=eval_cb)
 
     print(f"Training time -> {time.time() - start_time:.5f} seconds")
 
-    model.save(DIR_DATA_OUTPUT_DQN_MODELS_PATH / "factory_dqn_final")
+    model.save(path=models_path / FILE_NAME_FINAL_MODEL)
+
+    # Copy the scenario and configuration used for training for reference later
+    backup_scenario_file_path = output_dir_path / f"{DIR_NAME_BACKUP}_{scenario_file_path.name}"
+    backup_dqn_config_file_path = output_dqn_dir_path / f"{DIR_NAME_BACKUP}_{FILE_NAME_DQN_CONFIG}"
+
+    shutil.copy(scenario_file_path, backup_scenario_file_path)
+    shutil.copy(scenario_file_path.parent / FILE_NAME_DQN_CONFIG, backup_dqn_config_file_path)
 
     print("Done.")
 
 
-def run_inference(count: int = 1, quick_eval: bool = False):
+def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = False, use_best_model: bool = False):
 
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory_b.json")
+    # Get output directory path (based on hash value of JSON file)
+    output_dir_path = get_output_dir_path(scenario_file_path=scenario_file_path)
 
-    original_env = FactoryEnv(scenario, alpha=1.0, beta=1.0, max_steps=200, seed=999, use_reliability=True, output_action_state=False)
+    if not output_dir_path.exists():
+        raise FileNotFoundError(f"Directory '{output_dir_path.name}' doesn't exist. Please train a model first.")
+
+    dqn_model_dir_path = get_dqn_model_dir_path(scenario_file_path=scenario_file_path, output_dir_path=output_dir_path)
+
+    if not output_dir_path.exists():
+        raise FileNotFoundError(f"Directory '{dqn_model_dir_path.name}' doesn't exist. Please train a model first.")
+
+    # Load the DQN training configuration
+    dqn_config_dict = load_dqn_config(scenario_file_path=scenario_file_path)
+
+    scenario = Scenario(file_path=scenario_file_path)
+
+    original_env = FactoryEnv(scenario,
+                              alpha=dqn_config_dict["environment"]["alpha"],
+                              beta=dqn_config_dict["environment"]["beta"],
+                              max_steps=dqn_config_dict["environment"]["max_steps"],
+                              seed=dqn_config_dict["environment"]["inference_seed"],
+                              use_reliability=dqn_config_dict["environment"]["use_reliability"],
+                              output_action_state=dqn_config_dict["environment"]["output_action_state"])
+
     env = Monitor(original_env)
 
-    input_final_filepath = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "factory_dqn_final"  # "factory_dqn_final_DQN_2_20251111_perfect"
-    input_best_filepath = DIR_DATA_OUTPUT_DQN_MODELS_PATH / "logs" / "factory_dqn_best"  # "factory_dqn_best_DQN_2_20251111_great.zip"
+    if use_best_model:
+        model_filepath = dqn_model_dir_path / DIR_NAME_MODELS / FILE_NAME_BEST_MODEL
+    else:
+        model_filepath = dqn_model_dir_path / DIR_NAME_MODELS / FILE_NAME_FINAL_MODEL
 
-    model = DQN.load(input_final_filepath, env=env)
+    if not model_filepath.exists():
+        raise FileNotFoundError(f"The '{model_filepath.name}' model could not be found.")
+
+    model = DQN.load(path=model_filepath, env=env)
 
     if quick_eval:
 

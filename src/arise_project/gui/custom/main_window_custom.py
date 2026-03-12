@@ -4,11 +4,11 @@
 Module defining the main window GUI based on a class generated from a '.ui' file
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import networkx as nx
 import pandas as pd
@@ -23,7 +23,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 
 from src.arise_project.config.colors import COLOR_BY_SKILL_DICT
-from src.arise_project.config.paths import FILE_GUI_ICON_PATH, DIR_DATA_INPUT_SCENARIOS_JSON_PATH
+from src.arise_project.config.paths import FILE_GUI_ICON_PATH, FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 from src.arise_project.gui.generated.main_window_generated import Ui_MainWindow
 
 from src.arise_project.model.machines import StorageMachine, \
@@ -31,6 +31,8 @@ from src.arise_project.model.machines import StorageMachine, \
 
 from src.arise_project.model.scenario import Scenario
 from src.arise_project.model.tasks import TransportTask, Task
+
+OPT_ALGORITHMS = ["RL (DQN)", "NSGA-II", "IDDFS"]
 
 
 class Ui_MainWindow_Custom(Ui_MainWindow):
@@ -48,6 +50,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._selected_task_result = None
 
     def setupUi(self, MainWindow):
+
         super().setupUi(MainWindow)
 
         self.pushButton_execute_action.setEnabled(False)
@@ -56,12 +59,13 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self.pushButton_execute_action.clicked.connect(self.on_click_execute_action)
         self.pushButton_undo_last_action.clicked.connect(self.on_click_undo_last_action)
         self.pushButton_reset_scenario.clicked.connect(self.on_click_reset_scenario)
+        self.pushButton_run_optimization.clicked.connect(self.on_click_run_optimization)
 
         # Set window icon
         MainWindow.setWindowIcon(QtGui.QIcon(str(FILE_GUI_ICON_PATH)))
 
         # Load a scenario (product and factory)
-        self._scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory_b.json")
+        self._scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
         self._update_factory_tree_widget()
         self._update_product_tree_widget()
@@ -71,6 +75,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self.label_step.setText(f"{self._scenario.step_count}")
         self.label_time.setText(f"{self._scenario.time_sum:.3f}")
         self.label_energy.setText(f"{self._scenario.energy_sum:.3f}")
+
+        self.comboBox_optimization_algorithms.addItems(OPT_ALGORITHMS)
 
         self._init_graph_in_groupbox()
         self._draw_graph_in_groupbox(self._scenario.factory.create_digraph_stationary_machines(), labels=True, node_size=800)
@@ -405,6 +411,55 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         header = self.tableWidget_actions.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
+    def _update_optimization_actions_table_widget(self) -> None:
+        """
+        Function used to populate the table widget with all actions available at this step
+        :return: None
+        """
+
+        self.tableWidget_optimization_actions.clear()
+
+        self._current_task_result_list = self._scenario.executed_action_history()
+
+        def get_note_per_task(task: Task) -> str:
+
+            if isinstance(task, TransportTask):
+                return f"-> {task.target_machine_id}"
+            else:
+                return "-"
+
+        action_data_dict = [{"Product": task_result.product.unique_id,
+                             "Task": task_result.task.unique_id,
+                             "Machine": task_result.machine.unique_id,
+                             "Skill": f"{task_result.skill.unique_id}",
+                             "Skill Type": task_result.skill.type_name(),
+                             "Time": task_result.total_time,
+                             "Energy": task_result.total_energy,
+                             "Note": get_note_per_task(task_result.task)}
+
+                            for task_result in self._current_task_result_list]
+
+        actions_df = pd.DataFrame(data=action_data_dict)
+
+        self.tableWidget_optimization_actions.setRowCount(len(actions_df))
+        self.tableWidget_optimization_actions.setColumnCount(len(actions_df.columns))
+        self.tableWidget_optimization_actions.setHorizontalHeaderLabels(actions_df.columns.tolist())
+
+        for row in range(len(actions_df)):
+
+            for col in range(len(actions_df.columns)):
+
+                value = str(actions_df.iat[row, col])
+                item = QTableWidgetItem(value)
+
+                if value in COLOR_BY_SKILL_DICT:
+                    item.setForeground(QBrush(QColor(COLOR_BY_SKILL_DICT[value])))
+
+                self.tableWidget_optimization_actions.setItem(row, col, item)
+
+        header = self.tableWidget_optimization_actions.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
     def update_all(self):
 
         self.label_step.setText(f"{self._scenario.step_count}")
@@ -439,3 +494,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._scenario.reset()
         self.update_all()
         self.pushButton_execute_action.setEnabled(False)
+
+    def on_click_run_optimization(self):
+        pass
+
+        # self._update_optimization_actions_table_widget()

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+
+  "properties": {
+    "training": {
+      "type": "object",
+      "properties": {
+        "policy": { "type": "string" },
+        "learning_rate": { "type": "number" },
+        "buffer_size": { "type": "integer", "minimum": 1 },
+        "learning_starts": { "type": "integer", "minimum": 0 },
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1 },
+        "target_update_interval": { "type": "integer", "minimum": 1 },
+        "train_freq": { "type": "integer", "minimum": 1 },
+        "gradient_steps": { "type": "integer", "minimum": -1 },
+        "exploration_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "exploration_final_eps": { "type": "number", "minimum": 0, "maximum": 1 },
+        "total_timesteps": { "type": "integer", "minimum": 1 }
+      },
+      "required": [
+        "policy",
+        "learning_rate",
+        "buffer_size",
+        "learning_starts",
+        "batch_size",
+        "gamma",
+        "target_update_interval",
+        "train_freq",
+        "gradient_steps",
+        "exploration_fraction",
+        "exploration_final_eps",
+        "total_timesteps"
+      ],
+      "additionalProperties": false
+    },
+
+    "evaluation": {
+      "type": "object",
+      "properties": {
+        "eval_freq": { "type": "integer", "minimum": 1 },
+        "deterministic": { "type": "boolean" },
+        "render": { "type": "boolean" }
+      },
+      "required": ["eval_freq", "deterministic", "render"],
+      "additionalProperties": false
+    },
+
+    "environment": {
+      "type": "object",
+      "properties": {
+        "alpha": { "type": "number" },
+        "beta": { "type": "number" },
+        "max_steps": { "type": "integer", "minimum": 1 },
+        "training_seed": { "type": "integer" },
+        "evaluation_seed": { "type": "integer" },
+        "inference_seed": { "type": "integer" },
+        "use_reliability": { "type": "boolean" },
+        "output_action_state": { "type": "boolean" }
+      },
+      "required": [
+        "alpha",
+        "beta",
+        "max_steps",
+        "training_seed",
+        "evaluation_seed",
+        "inference_seed",
+        "use_reliability",
+        "output_action_state"
+      ],
+      "additionalProperties": false
+    }
+  },
+
+  "required": ["training", "evaluation", "environment"],
+  "additionalProperties": false
+}

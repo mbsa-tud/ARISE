@@ -4,28 +4,28 @@
 Main module of the ICM ARISE Project
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import random
 
-from src.arise_project.config.paths import DIR_DATA_INPUT_SCENARIOS_JSON_PATH
+from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 from src.arise_project.model.machines import Machine
 from src.arise_project.model.tasks import ProcessingTask
 from src.arise_project.model.scenario import Scenario
 from src.arise_project.scheduler.scheduler import Scheduler
 from src.arise_project.scheduler.q_learning import QLearningAlgorithm
 
-from src.arise_project.scheduler.factory_dqn_training import run_train, run_inference
+from src.arise_project.scheduler.factory_dqn_training import run_training, run_inference
 
 
 def main():
 
     # Load a scenario (product and factory) and create a simulation interface
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory.json")
+    scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     scheduler = Scheduler(scenario=scenario)
     scheduler.optimize()
@@ -36,7 +36,7 @@ def main():
 def main_random_processing():
 
     # Load a scenario (product and factory)
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory.json")
+    scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
     factory = scenario.factory
     product = scenario.get_sorted_product_list()[0]
 
@@ -80,7 +80,7 @@ def main_random_processing():
 def main_sim():
 
     # Load a scenario (product and factory)
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory.json")
+    scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     possible_actions = scenario.get_specific_actions()
     loop_counter = 0
@@ -111,7 +111,7 @@ def main_sim():
 def main_q_learning():
 
     # Load a scenario (product and factory)
-    scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory.json")
+    scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     q_learning_alg = QLearningAlgorithm(scenario=scenario, num_episodes=3000)
     q_learning_alg.train()
@@ -134,11 +134,19 @@ def main_q_learning():
 
 
 if __name__ == "__main__":
+
     # main()
     # main_random_processing()
     # main_sim()
     # main_q_learning()
 
-    # run_train()
-    run_inference(count=5, quick_eval=True)
+    training_bool = False
+
+    scenario_file_path = FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
+
+    if training_bool:
+        run_training(scenario_file_path=scenario_file_path)
+    else:
+        run_inference(scenario_file_path=scenario_file_path, count=5, quick_eval=True)
+
     pass

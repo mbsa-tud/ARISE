@@ -1,4 +1,5 @@
 {
+  "scenario_name": "Simple Factory",
   "factory": {
     "storage_machines": [
       {
@@ -44,7 +45,7 @@
           "milling_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 0.995
+            "reliability": 1.0
           }
         }
       },

@@ -84,9 +84,9 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_planning">
+      <widget class="QWidget" name="tab_simulation">
        <attribute name="title">
-        <string>Planning</string>
+        <string>Simulation</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
@@ -130,13 +130,13 @@
            </size>
           </property>
           <property name="title">
-           <string>Manual control</string>
+           <string/>
           </property>
           <widget class="QPushButton" name="pushButton_execute_action">
            <property name="geometry">
             <rect>
              <x>20</x>
-             <y>80</y>
+             <y>60</y>
              <width>141</width>
              <height>31</height>
             </rect>
@@ -155,7 +155,7 @@
            <property name="geometry">
             <rect>
              <x>150</x>
-             <y>40</y>
+             <y>20</y>
              <width>291</width>
              <height>21</height>
             </rect>
@@ -214,7 +214,7 @@
            <property name="geometry">
             <rect>
              <x>20</x>
-             <y>40</y>
+             <y>20</y>
              <width>131</width>
              <height>21</height>
             </rect>
@@ -312,7 +312,7 @@
            <property name="geometry">
             <rect>
              <x>260</x>
-             <y>80</y>
+             <y>60</y>
              <width>81</width>
              <height>31</height>
             </rect>
@@ -371,7 +371,7 @@
            <property name="geometry">
             <rect>
              <x>170</x>
-             <y>80</y>
+             <y>60</y>
              <width>81</width>
              <height>31</height>
             </rect>
@@ -384,6 +384,59 @@
            </property>
            <property name="text">
             <string>Undo</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_optimization">
+       <attribute name="title">
+        <string>Optimization</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QTableWidget" name="tableWidget_optimization_actions">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>150</height>
+           </size>
+          </property>
+          <property name="title">
+           <string/>
+          </property>
+          <widget class="QPushButton" name="pushButton_run_optimization">
+           <property name="geometry">
+            <rect>
+             <x>220</x>
+             <y>30</y>
+             <width>131</width>
+             <height>24</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Run optimization</string>
+           </property>
+          </widget>
+          <widget class="QComboBox" name="comboBox_optimization_algorithms">
+           <property name="geometry">
+            <rect>
+             <x>20</x>
+             <y>30</y>
+             <width>181</width>
+             <height>22</height>
+            </rect>
            </property>
           </widget>
          </widget>
