@@ -4,16 +4,16 @@
 Module defining the class of processing tasks
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import random
 from abc import ABC, abstractmethod
-from typing import Type
 
+from arise_project.model.execution_mode import ExecutionMode
 from src.arise_project.model.task_results import TaskResult
 from src.arise_project.model.skills import Skill, DrillingSkill, CuttingSkill, MillingSkill, TransportSkill
 
@@ -81,41 +81,61 @@ class Task(ABC):
         return self._unique_id
 
     @abstractmethod
-    def execute(self, selected_skill: Skill) -> TaskResult:
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> TaskResult:
         """
         Use the selected skill to execute the task and return the time and energy cost as well as information
         regarding whether the task was a success or a failure.
         :param selected_skill: Skill to complete (Skill)
+        :param mode: Execution mode (ExecutionMode)
         :return: task result (TaskResult)
         """
+        pass
+
+    @abstractmethod
+    def get_description_short(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_description_long(self) -> str:
         pass
 
 
 class ProcessingTask(Task):
     """
-    Abstract class for processing tasks
+    Abstract class for processing tasks based on the abstract "Task" class
     """
 
-    def __init__(self, unique_id: str, possible_skill_types: list[Type[Skill]]) -> None:
+    def __init__(self, unique_id: str, possible_skill_types: list[type[Skill]]) -> None:
 
         super().__init__(unique_id=unique_id)
 
         self._possible_skill_types = possible_skill_types
 
     @property
-    def possible_skill_types(self) -> list[Type[Skill]]:
+    def possible_skill_types(self) -> list[type[Skill]]:
         return self._possible_skill_types
 
+    @abstractmethod
     def get_params_dict(self) -> dict:
         return {}
 
-    def execute(self, selected_skill: Skill) -> TaskResult:
+    @abstractmethod
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> TaskResult:
         """
         Use the selected skill to execute the task and return the time and energy cost as well as information
         regarding whether the task was a success or a failure.
         :param selected_skill: Skill to complete (Skill)
+        :param mode: Execution mode (ExecutionMode)
         :return: task result (TaskResult)
         """
+        pass
+
+    @abstractmethod
+    def get_description_short(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_description_long(self) -> str:
         pass
 
 
@@ -156,24 +176,51 @@ class DrillingTask(ProcessingTask):
                 "center_y": self.center_y,
                 "radius": self.radius}
 
-    def execute(self, selected_skill: Skill) -> tuple[float, float, bool]:
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> tuple[float, float, bool]:
 
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # TODO Calculate total time and energy using the processing task in a way that makes sense
-        time = selected_skill.time_factor * self._radius
-        energy = selected_skill.energy_factor * self._radius
+        # Calculate the time and energy cost specifically for this task
+        time_cost = selected_skill.time_factor * self._radius
+        energy_cost = selected_skill.energy_factor * self._radius
 
-        noise = random.uniform(0.95, 1.1)
-        total_time = round(time * noise, 3)
-        total_energy = round(energy * noise, 3)
+        # Introduce noise based on process variability defined individually for each skill (noise sim)
+        match mode:
+
+            case ExecutionMode.RANDOM:
+
+                total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
+
+            case ExecutionMode.BEST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
+
+            case ExecutionMode.WORST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
+
+            case _:
+
+                raise ValueError("Unknown execution mode.")
+
+        rounded_total_time_cost = round(total_time_cost, 3)
+        rounded_total_energy_cost = round(total_energy_cost, 3)
 
         # TODO Decide if this needs to be deactivated when reliability is considered during optimization
         # Decide randomly if execution of processing task is successful based on reliability
         success_bool = random.random() < selected_skill.reliability
 
-        return total_time, total_energy, success_bool
+        return rounded_total_time_cost, rounded_total_energy_cost, success_bool
+
+    def get_description_short(self) -> str:
+        return f"R: {self.radius:.2f}"
+
+    def get_description_long(self) -> str:
+        return f"X: {self._center_x:.2f}, Y: {self._center_y:.2f}, R: {self.radius:.2f}"
 
 
 class MillingTask(ProcessingTask):
@@ -201,25 +248,51 @@ class MillingTask(ProcessingTask):
     def get_params_dict(self) -> dict:
         return {"total_area": self._total_area}
 
-    def execute(self, selected_skill: Skill) -> tuple[float, float, bool]:
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> tuple[float, float, bool]:
 
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # TODO Calculate total time and energy using the processing task in a way that makes sense
-        time = selected_skill.time_factor * self._total_area
-        energy = selected_skill.energy_factor * self._total_area
+        # Calculate the time and energy cost specifically for this task
+        time_cost = selected_skill.time_factor * self._total_area
+        energy_cost = selected_skill.energy_factor * self._total_area
 
-        # Introduce noise
-        noise = random.uniform(0.95, 1.1)
-        total_time = round(time * noise, 3)
-        total_energy = round(energy * noise, 3)
+        # Introduce noise based on process variability defined individually for each skill (noise sim)
+        match mode:
+
+            case ExecutionMode.RANDOM:
+
+                total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
+
+            case ExecutionMode.BEST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
+
+            case ExecutionMode.WORST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
+
+            case _:
+
+                raise ValueError("Unknown execution mode.")
+
+        rounded_total_time_cost = round(total_time_cost, 3)
+        rounded_total_energy_cost = round(total_energy_cost, 3)
 
         # TODO Decide if this needs to be deactivated when reliability is considered during optimization
         # Decide randomly if execution of processing task is successful based on reliability
         success_bool = random.random() < selected_skill.reliability
 
-        return total_time, total_energy, success_bool
+        return rounded_total_time_cost, rounded_total_energy_cost, success_bool
+
+    def get_description_short(self) -> str:
+        return f"A: {self._total_area:.2f}"
+
+    def get_description_long(self) -> str:
+        return f"A: {self._total_area:.2f}"
 
 
 class CuttingTask(ProcessingTask):
@@ -247,26 +320,51 @@ class CuttingTask(ProcessingTask):
     def get_params_dict(self) -> dict:
         return {"total length": self._total_length}
 
-    def execute(self, selected_skill: Skill) -> tuple[float, float, bool]:
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> tuple[float, float, bool]:
 
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # TODO Calculate total time and energy using the processing task in a way that makes sense
-        time = selected_skill.time_factor * self._total_length
-        energy = selected_skill.energy_factor * self._total_length
+        # Calculate the time and energy cost specifically for this task
+        time_cost = selected_skill.time_factor * self._total_length
+        energy_cost = selected_skill.energy_factor * self._total_length
 
-        # Introduce noise
-        noise = random.uniform(0.95, 1.1)
-        total_time = round(time * noise, 3)
-        total_energy = round(energy * noise, 3)
+        # Introduce noise based on process variability defined individually for each skill (noise sim)
+        match mode:
+
+            case ExecutionMode.RANDOM:
+
+                total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
+
+            case ExecutionMode.BEST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
+
+            case ExecutionMode.WORST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
+
+            case _:
+
+                raise ValueError("Unknown execution mode.")
+
+        rounded_total_time_cost = round(total_time_cost, 3)
+        rounded_total_energy_cost = round(total_energy_cost, 3)
 
         # TODO Decide if this needs to be deactivated when reliability is considered during optimization
         # Decide randomly if execution of processing task is successful based on reliability
         success_bool = random.random() < selected_skill.reliability
 
-        return total_time, total_energy, success_bool
+        return rounded_total_time_cost, rounded_total_energy_cost, success_bool
 
+    def get_description_short(self) -> str:
+        return f"L: {self._total_length:.2f}"
+
+    def get_description_long(self) -> str:
+        return f"L: {self._total_length:.2f}"
 
 class TransportTask(Task):
     """
@@ -303,22 +401,48 @@ class TransportTask(Task):
     def get_params_dict(self) -> dict:
         return {"distance": self._distance}
 
-    def execute(self, selected_skill: Skill) -> tuple[float, float, bool]:
+    def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> tuple[float, float, bool]:
 
         if not isinstance(selected_skill, TransportSkill):
             raise ValueError(f"Skill can't be used for transport task {self._unique_id}.")
 
-        # TODO Calculate total time and energy using the transport task in a way that makes sense
-        time = selected_skill.time_factor * self._distance
-        energy = selected_skill.energy_factor * self._distance
+        # Calculate the time and energy cost specifically for this task
+        time_cost = selected_skill.time_factor * self._distance
+        energy_cost = selected_skill.energy_factor * self._distance
 
-        # Introduce noise
-        noise = random.uniform(0.95, 1.1)
-        total_time = round(time * noise, 3)
-        total_energy = round(energy * noise, 3)
+        # Introduce noise based on process variability defined individually for each skill (noise sim)
+        match mode:
+
+            case ExecutionMode.RANDOM:
+
+                total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
+
+            case ExecutionMode.BEST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
+
+            case ExecutionMode.WORST_CASE:
+
+                total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
+                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
+
+            case _:
+
+                raise ValueError("Unknown execution mode.")
+
+        rounded_total_time_cost = round(total_time_cost, 3)
+        rounded_total_energy_cost = round(total_energy_cost, 3)
 
         # TODO Decide if this needs to be deactivated when reliability is considered during optimization
         # Decide randomly if execution of processing task is successful based on reliability
         success_bool = random.random() < selected_skill.reliability
 
-        return total_time, total_energy, success_bool
+        return rounded_total_time_cost, rounded_total_energy_cost, success_bool
+
+    def get_description_short(self) -> str:
+        return f"-> {self._target_machine_id}"
+
+    def get_description_long(self) -> str:
+        return f"{self._source_machine_id} -> {self._target_machine_id} ({self._distance})"

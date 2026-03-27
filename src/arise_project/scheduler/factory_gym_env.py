@@ -5,15 +5,15 @@ Module containing the factory environment for reinforcement learning.
 Developed with the help of AI (partly AI-generated).
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import gymnasium as gym
 import numpy as np
-from typing import Dict, Any
+from typing import Any
 
 from src.arise_project.model.scenario import Scenario
 from src.arise_project.model.tasks import ProcessingTask
@@ -58,7 +58,7 @@ class FactoryEnv(gym.Env):
 
         self.action_space = gym.spaces.Discrete(len(self.scenario.sorted_action_catalog))
 
-    def _encode_state(self) -> Dict[str, np.ndarray]:
+    def _encode_state(self) -> dict[str, np.ndarray]:
         """
         Build normalized features and binary action mask from the scenario's current state.
         """
@@ -98,7 +98,7 @@ class FactoryEnv(gym.Env):
 
         return {"features": features, "action_mask": action_mask}
 
-    def reset(self, *, seed: int | None = None, options: Dict[str, Any] | None = None):
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
 
         if seed is not None:
             self.rng.seed(seed)

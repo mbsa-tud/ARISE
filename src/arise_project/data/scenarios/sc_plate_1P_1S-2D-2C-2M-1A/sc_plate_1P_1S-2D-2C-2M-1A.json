@@ -1,5 +1,5 @@
 {
-  "scenario_name": "Simple Factory (Reduced Reliability)",
+  "scenario_name": "Simple Factory",
   "factory": {
     "storage_machines": [
       {
@@ -11,12 +11,24 @@
           "store_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           },
           "retrieve_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
 
         }
@@ -32,7 +44,13 @@
           "milling_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       },
@@ -45,7 +63,13 @@
           "milling_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 0.995
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       },
@@ -58,7 +82,13 @@
           "cutting_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       },
@@ -71,7 +101,13 @@
           "cutting_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       },
@@ -84,7 +120,13 @@
           "drilling_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       },
@@ -97,7 +139,13 @@
           "drilling_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         }
       }
@@ -110,7 +158,13 @@
           "transport_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
-            "reliability": 1.0
+            "reliability": 1.0,
+            "variability": {
+              "use_normal_distribution": false,
+              "uniform_time_variability": 0.0,
+              "uniform_energy_variability": 0.0,
+              "normal_dist_sigma_factor": 0.0
+            }
           }
         },
         "from": ["*"],

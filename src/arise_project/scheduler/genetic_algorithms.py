@@ -5,21 +5,23 @@ Module defining the genetic algorithms, specifically Non-dominated Sorting Genet
 Developed with the help of AI (partly AI-generated).
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import time
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple, Dict, Any, Optional
-
+from typing import Any
 from pymoo.core.problem import Problem
 from pymoo.core.sampling import Sampling
 from pymoo.core.repair import Repair
 from pymoo.core.mutation import Mutation
+from pymoo.core.result import Result
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.optimize import minimize
@@ -28,7 +30,12 @@ from pymoo.operators.crossover.pntx import TwoPointCrossover
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.indicators.hv import HV
 
-from src.arise_project.config.paths import DIR_DATA_INPUT_SCENARIOS_JSON_PATH
+from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
+from arise_project.model.optimization_method import OptimizationMethod
+from arise_project.model.optimization_result import OptimizationResult
+from arise_project.model.objective import ObjectiveFunction
+from arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 from src.arise_project.model.scenario import Scenario
 
 
@@ -70,7 +77,11 @@ class FactorySequenceProblem(Problem):
         # Evaluate individuals sequentially to avoid scenario state conflicts
         for i, seq in enumerate(X):
 
-            total_time, total_energy, sequence_reliability, done, steps_used, _ = self._scenario.execute_action_idx_sequence(seq)
+            done, steps_used, _ = self._scenario.execute_action_idx_sequence(seq)
+
+            total_time = self._scenario.time_sum
+            total_energy = self._scenario.energy_sum
+            sequence_reliability = self._scenario.sequence_reliability
 
             if not done:
 
@@ -223,12 +234,23 @@ class RandomResetMutation(Mutation):
         return Y
 
 
-def run_nsga(scenario: Scenario, algorithm: str = "nsga2", seq_len: int = 200, pop_size: int = 80, n_gen: int = 150,
-             penalty: float = 1e4, mut_prob: float = 0.15, seed: int = 42, use_reliability: bool = False, verbose: bool = True):
+def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: int = 200, pop_size: int = 80, n_gen: int = 150,
+                       penalty: float = 1e4, mut_prob: float = 0.15, seed: int = 42, use_reliability: bool = False, verbose: bool = True,
+                       progress_updater=DummyProgressUpdater()) -> Result:
     """
     Run NSGA-II or NSGA-III on the FactorySequenceProblem.
     Returns pymoo result object.
     """
+
+    if algorithm == "nsga2":
+        alg_name_str = "NSGA-II"
+    elif algorithm == "nsga3":
+        alg_name_str = "NSGA-III"
+    else:
+        raise ValueError(f"Algorithm {algorithm} is not supported.")
+
+    progress_updater.text = f"Preparing {alg_name_str}"
+    progress_updater.percentage = 0
 
     # Define problem to minimize
     problem = FactorySequenceProblem(scenario=scenario, seq_len=seq_len, penalty=penalty, use_reliability=use_reliability)
@@ -246,6 +268,9 @@ def run_nsga(scenario: Scenario, algorithm: str = "nsga2", seq_len: int = 200, p
     # Define mutation method
     mutation = RandomResetMutation(prob=mut_prob)
     mutation.repair = repair
+
+    progress_updater.text = f"Defining the algorithm"
+    progress_updater.percentage = 25
 
     if algorithm.lower() == "nsga2":
 
@@ -271,13 +296,19 @@ def run_nsga(scenario: Scenario, algorithm: str = "nsga2", seq_len: int = 200, p
 
     termination = get_termination("n_gen", n_gen)
 
+    progress_updater.text = f"Running {alg_name_str} algorithm"
+    progress_updater.percentage = 50
+
     result = minimize(problem=problem, algorithm=algo, termination=termination, seed=seed,
                       save_history=False, verbose=verbose)
+
+    progress_updater.text = f"Done."
+    progress_updater.percentage = 100
 
     return result
 
 
-def plot_pareto(results: Dict[str, Any], title: str = "Pareto Fronts"):
+def plot_pareto(results: dict[str, Any], title: str = "Pareto Fronts"):
     """
     Plot Pareto fronts for multiple algorithms.
     results: dict like {"nsga2": res2, "nsga3": res3}
@@ -304,7 +335,7 @@ def plot_pareto(results: Dict[str, Any], title: str = "Pareto Fronts"):
     plt.show()
 
 
-def compute_hypervolume(res, reference_point: Optional[Tuple[float, float]] = None) -> float:
+def compute_hypervolume(res, reference_point: tuple[float, float] | None = None) -> float:
     """
     Compute hypervolume for a 2D Pareto front.
     If reference_point is None, use slightly worse than max objectives in res.F.
@@ -346,7 +377,7 @@ def print_best_sequence(scenario: Scenario, res, prefer: str = "sum"):
     best_seq = res.X[best_idx]
 
     # Re-simulate to get actual actions taken until done
-    _, _, _, _, _, actions_taken = scenario.execute_action_idx_sequence(best_seq)
+    _, _, actions_taken = scenario.execute_action_idx_sequence(best_seq)
 
     print(f"\nChosen solution index: {best_idx}")
     print(f"Objectives (time, energy): {F[best_idx]}")
@@ -356,10 +387,93 @@ def print_best_sequence(scenario: Scenario, res, prefer: str = "sum"):
         print(scenario.sorted_action_catalog[action_idx])
 
 
+def objective_search(row: np.ndarray) -> float:
+
+    # row is something like [time, energy]
+    w_time, w_energy = 0.5, 0.5
+    return w_time * row[0] + w_energy * row[1]
+
+
+def run_nsga(scenario_file_path: Path,
+             objective_function: ObjectiveFunction,
+             opt_method: OptimizationMethod,
+             progress_updater = DummyProgressUpdater()) -> OptimizationResult:
+
+    if opt_method is OptimizationMethod.OPT_NSGA2:
+        algorithm_str = "nsga2"
+    elif opt_method is OptimizationMethod.OPT_NSGA3:
+        algorithm_str = "nsga3"
+    else:
+        raise ValueError(f"Unknown optimization method: {opt_method}")
+
+    # Load a scenario (product and factory)
+    example_scenario = Scenario(file_path=scenario_file_path)
+
+    # Fixed-length chromosome
+    max_steps = 200
+    population_size = 80
+    number_generations = 150
+
+    # Start timer
+    start_time = time.time()
+
+    # Run NSGA-II or NSGA-III
+    result = run_nsga_algorithm(
+        scenario=example_scenario,
+        algorithm=algorithm_str,
+        seq_len=max_steps,
+        pop_size=population_size,
+        n_gen=number_generations,
+        mut_prob=0.15,
+        penalty=1e4,
+        seed=42,
+        use_reliability=True,
+        verbose=True,
+        progress_updater=progress_updater
+    )
+
+    prefer = "sum"
+
+    if prefer == "time":
+        best_idx = int(np.argmin(result.F[:, 0]))
+    elif prefer == "energy":
+        best_idx = int(np.argmin(result.F[:, 1]))
+
+    elif prefer == "objective":
+        values = np.apply_along_axis(objective_search, 1, result.F)
+        best_idx = int(np.argmin(values))
+
+    else:
+        best_idx = int(np.argmin(np.sum(result.F, axis=1)))
+
+    best_seq = result.X[best_idx]
+    total_time = result.F[best_idx][0]
+    total_energy = result.F[best_idx][1]
+
+    print_with_timestamp(f"Result of '{algorithm_str}' -> total time: {total_time:.3f}, total energy: {total_energy:.3f}")
+
+    example_scenario.reset()
+
+    # Re-simulate to get actual actions taken until done
+    _, _, actions_taken = example_scenario.execute_action_idx_sequence(best_seq)
+
+    hv_nsga = compute_hypervolume(result)
+
+    return OptimizationResult(action_idx_sequence=list(actions_taken),
+                              task_result_list=example_scenario.task_result_history,
+                              total_time=example_scenario.time_sum,
+                              total_energy=example_scenario.energy_sum,
+                              sequence_reliability=example_scenario.sequence_reliability,
+                              objective_function=objective_function,
+                              other_params_dict={"hypervolume": hv_nsga},
+                              total_duration_seconds=(time.time() - start_time),
+                              opt_method=opt_method)
+
+
 if __name__ == "__main__":
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory_b.json")
+    example_scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     # Fixed-length chromosome
     max_steps = 200
@@ -370,7 +484,7 @@ if __name__ == "__main__":
     nsga2_start_time = time.time()
 
     # Run NSGA-II
-    res_nsga2 = run_nsga(
+    res_nsga2 = run_nsga_algorithm(
         scenario=example_scenario,
         algorithm="nsga2",
         seq_len=max_steps,
@@ -390,7 +504,7 @@ if __name__ == "__main__":
     nsga3_start_time = time.time()
 
     # Run NSGA-III - optional / for comparison (useful even in 2D)
-    res_nsga3 = run_nsga(
+    res_nsga3 = run_nsga_algorithm(
         scenario=example_scenario,
         algorithm="nsga3",
         seq_len=max_steps,

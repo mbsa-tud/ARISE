@@ -4,13 +4,13 @@
 Module defining the product state class
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
-from typing import List, Set, Self
+from typing import Self
 
 from src.arise_project.model.tasks import ProcessingTask, Task, TransportTask
 
@@ -30,9 +30,9 @@ class ProductState:
             self._processing_tasks = set()
         elif isinstance(processing_tasks, ProcessingTask):
             self._processing_tasks = {processing_tasks}
-        elif isinstance(processing_tasks, List):
+        elif isinstance(processing_tasks, list):
             self._processing_tasks = set(processing_tasks)
-        elif isinstance(processing_tasks, Set):
+        elif isinstance(processing_tasks, set):
             self._processing_tasks = processing_tasks
         else:
             raise ValueError("Invalid type for processing task parameter")

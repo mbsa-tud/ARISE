@@ -61,3 +61,14 @@ def get_canonical_hash_dqn_config_json(file_path: Path, char_length: int = 8) ->
     return get_canonical_hash(file_path=file_path,
                               char_length=char_length,
                               remove_key_list=REMOVE_KEY_LIST_DQN_CONFIG_JSON)
+
+
+def get_scenario_output_dir_path(scenario_file_path: Path) -> Path:
+    """
+    Calculate canonical hash, create directory name and make directory if it doesn't exist yet.
+    """
+
+    hash_str = get_canonical_hash_scenario_json(file_path=scenario_file_path)
+    output_dir_path = scenario_file_path.parent / f"{scenario_file_path.stem}_{hash_str}"
+
+    return output_dir_path

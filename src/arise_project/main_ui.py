@@ -4,13 +4,16 @@
 Main module of the ICM ARISE Project (GUI version)
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import sys
+
+# Import unused but necessary to avoid DLL load conflicts with PyQt6
+from stable_baselines3 import DQN
 
 from PyQt6 import QtWidgets
 

@@ -5,16 +5,16 @@ Module defining a brute force algorithm for finding the optimal solution (effect
 Developed with the help of AI (partly AI-generated).
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import numpy as np
 from tqdm import tqdm
 
-from src.arise_project.config.paths import DIR_DATA_INPUT_SCENARIOS_JSON_PATH
+from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 from src.arise_project.model.scenario import Scenario
 
 
@@ -44,7 +44,7 @@ def next_seq(seq: np.ndarray, base: int) -> bool:
 def main():
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=DIR_DATA_INPUT_SCENARIOS_JSON_PATH / "scenario_plate_factory.json")
+    example_scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     sequence_length = 10
     base = len(example_scenario.sorted_action_catalog)
@@ -61,8 +61,12 @@ def main():
 
         # print(f"{counter} - {seq}")
 
-        total_time, total_energy, sequence_reliability, done, steps_used, actions_taken = example_scenario.execute_action_idx_sequence(
+        done, steps_used, actions_taken = example_scenario.execute_action_idx_sequence(
             seq=seq, check_validity=True, random_seed=None)
+
+        total_time = example_scenario.time_sum
+        total_energy = example_scenario.energy_sum
+        sequence_reliability = example_scenario.sequence_reliability
 
         if done:
             actions_done.append(actions_taken)

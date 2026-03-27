@@ -4,13 +4,11 @@
 Module defining the factory class
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
-
-from typing import Type, List
+__version__ = "0.0.3"
 
 import numpy as np
 import pandas as pd
@@ -40,6 +38,7 @@ class Factory:
         # List of edges: (source_machine_id, target_machine_id, transport_machine)
         self._transport_connections = []
         self._transport_task_list_by_transport_dict = {}
+        self._transport_task_by_id_dict = {}
 
         self._stationary_machine_distance_df = pd.DataFrame()
 
@@ -72,10 +71,14 @@ class Factory:
         return self._transport_connections
 
     @property
-    def transport_task_list_by_transport_dict(self) -> dict[str, List[TransportTask]]:
+    def transport_task_list_by_transport_dict(self) -> dict[str, list[TransportTask]]:
         return self._transport_task_list_by_transport_dict
 
-    def get_sorted_all_machines_list(self) -> List[Machine]:
+    @property
+    def transport_task_by_id_dict(self) -> dict[str, TransportTask]:
+        return self._transport_task_by_id_dict
+
+    def get_sorted_all_machines_list(self) -> list[Machine]:
         """
         Make sure list of machines is always sorted alphabetically by unique id to ensure consistency
         :return: Sorted list of machines in the factory (list)
@@ -86,7 +89,7 @@ class Factory:
 
         return result_list
 
-    def get_sorted_all_stationary_machines_list(self) -> List[StationaryMachine]:
+    def get_sorted_all_stationary_machines_list(self) -> list[StationaryMachine]:
         """
         Make sure list of stationary machines is always sorted alphabetically by unique id to ensure consistency
         :return: Sorted list of stationary machines in the factory (list)
@@ -128,26 +131,6 @@ class Factory:
                 return machine.skill_by_id_dict[unique_id]
 
         raise ValueError(f"Skill with id {unique_id} does not exist anywhere in the factory.")
-
-    def get_transport_task_with_id(self, unique_id: str) -> TransportTask | None:
-
-        for transport_task_list in self._transport_task_list_by_transport_dict.values():
-
-            for transport_task in transport_task_list:
-
-                if transport_task.unique_id == unique_id:
-                    return transport_task
-
-        return None
-
-    def contains_transport_task_with_id(self, unique_id: str) -> bool:
-
-        transport_task = self.get_transport_task_with_id(unique_id)
-
-        if transport_task is None:
-            return False
-        else:
-            return True
 
     def get_transport_distance(self, source_machine_id: str, target_machine_id: str) -> float:
         return self._stationary_machine_distance_df.loc[source_machine_id, target_machine_id]
@@ -211,10 +194,11 @@ class Factory:
                                        distance=self.get_transport_distance(source_machine_id=source_machine.unique_id,
                                                                             target_machine_id=target_machine.unique_id))
 
+        self._transport_task_by_id_dict[transport_task.unique_id] = transport_task
+
         if transport_machine.unique_id not in self._transport_task_list_by_transport_dict:
             self._transport_task_list_by_transport_dict[transport_machine.unique_id] = [transport_task]
         else:
-
             self._transport_task_list_by_transport_dict[transport_machine.unique_id].append(transport_task)
 
     def create_connections(self, transporter_machine: TransporterMachine, from_machine_list: list[Machine], to_machine_list: list[Machine]):
@@ -294,7 +278,7 @@ class Factory:
 
         return self._machine_by_id_dict[unique_id]
 
-    def get_machines_by_skill_type(self, skill_type: Type[Skill]) -> set[Machine]:
+    def get_machines_by_skill_type(self, skill_type: type[Skill]) -> set[Machine]:
 
         if skill_type.__name__ not in self._machines_by_skill_dict.keys():
             raise ValueError(f"No machines with {skill_type.__name__} not found in factory")

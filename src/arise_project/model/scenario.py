@@ -4,21 +4,22 @@
 Module containing the scenario class definition
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import json
 import random
-from typing import Tuple, List, Dict
 
 import numpy as np
 from jsonschema import validate, ValidationError
 
 from pathlib import Path
 
+from arise_project.model.objective import ObjectiveFunction
+from arise_project.model.variability import ProcessVariability
 from src.arise_project.config.paths import FILE_SCENARIO_JSON_SCHEMA_PATH
 from src.arise_project.model.action_key import ActionKey
 from src.arise_project.model.factory import Factory
@@ -36,20 +37,24 @@ from src.arise_project.model.tasks import TransportTask
 
 class Scenario:
 
-    def __init__(self, file_path: Path, random_seed: int = None):
+    def __init__(self, file_path: Path, random_seed: int | None = None, reset_class: bool = False) -> None:
+
+        if reset_class:
+            Scenario.reset_all()
 
         if random_seed is not None:
             random.seed(random_seed)
 
         self._factory = Factory()
         self._product_by_id_dict = {}
-        self._executed_action_history = []
+        self._task_result_history = []
 
-        self._sorted_action_catalog: List[ActionKey] = []
+        self._sorted_action_catalog: list[ActionKey] = []
 
         self._step_count = 0
         self._time_sum = 0.0
         self._energy_sum = 0.0
+        self._sequence_reliability = 1.0
         self._done_products = 0
 
         self._file_path = file_path
@@ -75,11 +80,11 @@ class Scenario:
         return result_list
 
     @property
-    def executed_action_history(self) -> list[TaskResult]:
-        return self._executed_action_history
+    def task_result_history(self) -> list[TaskResult]:
+        return self._task_result_history
 
     @property
-    def sorted_action_catalog(self) -> List[ActionKey]:
+    def sorted_action_catalog(self) -> list[ActionKey]:
         return self._sorted_action_catalog
 
     @property
@@ -93,6 +98,10 @@ class Scenario:
     @property
     def energy_sum(self) -> float:
         return self._energy_sum
+
+    @property
+    def sequence_reliability(self) -> float:
+        return self._sequence_reliability
 
     def _load_from_json(self, file_path: Path) -> None:
 
@@ -123,12 +132,20 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 store_skill = StoreSkill(time_factor=stm["skill_params"]["store_skill"]["time_factor"],
                                          energy_factor=stm["skill_params"]["store_skill"]["energy_factor"],
-                                         reliability=stm["skill_params"]["store_skill"]["reliability"])
+                                         reliability=stm["skill_params"]["store_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=stm["skill_params"]["store_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=stm["skill_params"]["store_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=stm["skill_params"]["store_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=stm["skill_params"]["store_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 # Create skill with the machine's skill-specific parameters
                 retrieve_skill = RetrieveSkill(time_factor=stm["skill_params"]["retrieve_skill"]["time_factor"],
                                                energy_factor=stm["skill_params"]["retrieve_skill"]["energy_factor"],
-                                               reliability=stm["skill_params"]["retrieve_skill"]["reliability"])
+                                               reliability=stm["skill_params"]["retrieve_skill"]["reliability"],
+                                               process_variability=ProcessVariability(use_normal_distribution=stm["skill_params"]["retrieve_skill"]["variability"]["use_normal_distribution"],
+                                                                                      uniform_time_variability=stm["skill_params"]["retrieve_skill"]["variability"]["uniform_time_variability"],
+                                                                                      uniform_energy_variability=stm["skill_params"]["retrieve_skill"]["variability"]["uniform_energy_variability"],
+                                                                                      normal_dist_sigma_factor=stm["skill_params"]["retrieve_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 storage_machine = StorageMachine(name=stm["name"], x=stm["x"], y=stm["y"],
                                                  store_skill=store_skill, retrieve_skill=retrieve_skill)
@@ -144,7 +161,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 drilling_skill = DrillingSkill(time_factor=prm["skill_params"]["drilling_skill"]["time_factor"],
                                                energy_factor=prm["skill_params"]["drilling_skill"]["energy_factor"],
-                                               reliability=prm["skill_params"]["drilling_skill"]["reliability"])
+                                               reliability=prm["skill_params"]["drilling_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["drilling_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=prm["skill_params"]["drilling_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=prm["skill_params"]["drilling_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=prm["skill_params"]["drilling_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 drilling_machine = DrillingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                    drilling_skill=drilling_skill)
@@ -157,7 +178,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 cutting_skill = CuttingSkill(time_factor=prm["skill_params"]["cutting_skill"]["time_factor"],
                                              energy_factor=prm["skill_params"]["cutting_skill"]["energy_factor"],
-                                             reliability=prm["skill_params"]["cutting_skill"]["reliability"])
+                                             reliability=prm["skill_params"]["cutting_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["cutting_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=prm["skill_params"]["cutting_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=prm["skill_params"]["cutting_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=prm["skill_params"]["cutting_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 cutting_machine = CuttingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                  cutting_skill=cutting_skill)
@@ -170,7 +195,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 milling_skill = MillingSkill(time_factor=prm["skill_params"]["milling_skill"]["time_factor"],
                                              energy_factor=prm["skill_params"]["milling_skill"]["energy_factor"],
-                                             reliability=prm["skill_params"]["milling_skill"]["reliability"])
+                                             reliability=prm["skill_params"]["milling_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["milling_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=prm["skill_params"]["milling_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=prm["skill_params"]["milling_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=prm["skill_params"]["milling_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 milling_machine = MillingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                  milling_skill=milling_skill)
@@ -203,7 +232,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
-                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"])
+                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 agv = AutomatedGuidedVehicle(name=tpm["name"], transport_skill=transport_skill)
 
@@ -217,7 +250,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
-                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"])
+                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 tar = ThreeAxesRobot(name=tpm["name"], transport_skill=transport_skill)
 
@@ -231,7 +268,11 @@ class Scenario:
                 # Create skill with the machine's skill-specific parameters
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
-                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"])
+                                                 reliability=tpm["skill_params"]["transport_skill"]["reliability"],
+                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
+                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
+                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
+                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
 
                 cob = ConveyorBelt(name=tpm["name"], transport_skill=transport_skill)
 
@@ -295,13 +336,6 @@ class Scenario:
         # Once loaded, generate the sorted action catalog (regenerate if factory or product changes)
         self._generate_sorted_action_catalog()
 
-    # TODO state of scenario should not only depend on first product
-    def get_current_state(self) -> ProductState:
-        return self.get_sorted_product_list()[0].current_state
-
-    def get_target_state(self) -> ProductState:
-        return self.get_sorted_product_list()[0].target_state
-
     def get_actions(self) -> list[TaskResult]:
 
         all_possible_actions = []
@@ -364,7 +398,7 @@ class Scenario:
 
     def _generate_sorted_action_catalog(self):
 
-        action_catalog: List[ActionKey] = []
+        action_catalog: list[ActionKey] = []
 
         # For each product
         for product in self.get_sorted_product_list():
@@ -411,7 +445,12 @@ class Scenario:
 
         return action_mask
 
-    def get_product_states(self) -> Dict[str, ProductState]:
+    def get_feasible_actions_idx_list(self) -> list[int]:
+
+        action_mask = self.generate_feasible_action_mask()
+        return np.flatnonzero(action_mask)
+
+    def get_product_states(self) -> dict[str, ProductState]:
 
         result_dict = {}
 
@@ -421,7 +460,7 @@ class Scenario:
 
         return result_dict
 
-    def get_sorted_all_tasks_list(self) -> List[Task]:
+    def get_sorted_all_tasks_list(self) -> list[Task]:
         """
         Make sure list of processing & transport tasks is always sorted alphabetically by unique id to ensure consistency
         :return: Sorted list of processing & transport tasks in the factory (list)
@@ -442,7 +481,7 @@ class Scenario:
 
         return result_list
 
-    def get_sorted_processing_tasks_list(self) -> List[Task]:
+    def get_sorted_processing_tasks_list(self) -> list[Task]:
         """
         Make sure list of processing tasks is always sorted alphabetically by unique id to ensure consistency
         :return: Sorted list of processing tasks in the factory (list)
@@ -458,7 +497,7 @@ class Scenario:
 
         return result_list
 
-    def step(self, action_key: ActionKey) -> Tuple[TaskResult, bool, bool] | Tuple[None, None, None]:
+    def step(self, action_key: ActionKey) -> tuple[TaskResult, bool, bool] | tuple[None, None, None]:
 
         task_result = self.execute_action_key(action_key=action_key)
 
@@ -480,22 +519,18 @@ class Scenario:
 
         return task_result, product_done_this_step_bool, all_products_done_bool
 
-    def step_by_action_idx(self, action_idx: int) -> Tuple[TaskResult, bool, bool] | Tuple[None, None, None]:
+    def step_by_action_idx(self, action_idx: int) -> tuple[TaskResult, bool, bool] | tuple[None, None, None]:
 
         action_key = self._sorted_action_catalog[action_idx]
 
         return self.step(action_key=action_key)
 
-    def get_feasible_actions(self) -> List[ActionKey]:
+    def get_feasible_actions(self) -> list[ActionKey]:
         return self.get_action_identities()
 
     def execute_action(self, task_result: TaskResult) -> None:
 
         product = task_result.product
-
-        # TODO Find another way to do this, this is temporary as deepcopy creates a new (an different) product object
-        if self.get_sorted_product_list()[0].unique_id == product.unique_id:
-            product = self.get_sorted_product_list()[0]
 
         # If successful, update product state
         if task_result.success_bool:
@@ -504,21 +539,18 @@ class Scenario:
         self._step_count = self._step_count + 1
         self._time_sum = self._time_sum + task_result.total_time
         self._energy_sum = self._energy_sum + task_result.total_energy
+        self._sequence_reliability = self._sequence_reliability * task_result.skill.reliability
 
-        self._executed_action_history.append(task_result)
+        self._task_result_history.append(task_result)
 
     def undo_last_action(self) -> None:
 
         # Make sure there is an action to undo
-        if len(self._executed_action_history) > 0:
+        if len(self._task_result_history) > 0:
 
-            last_executed_task_result = self._executed_action_history.pop()
+            last_executed_task_result = self._task_result_history.pop()
 
             product = last_executed_task_result.product
-
-            # TODO Find another way to do this, this is temporary as deepcopy creates a new (an different) product object
-            if self.get_sorted_product_list()[0].unique_id == product.unique_id:
-                product = self.get_sorted_product_list()[0]
 
             # If successful, update product state
             if last_executed_task_result.success_bool:
@@ -527,6 +559,7 @@ class Scenario:
             self._step_count = self._step_count - 1
             self._time_sum = self._time_sum - last_executed_task_result.total_time
             self._energy_sum = self._energy_sum - last_executed_task_result.total_energy
+            self._sequence_reliability = self._sequence_reliability / last_executed_task_result.skill.reliability
 
     def execute_action_key(self, action_key: ActionKey) -> TaskResult | None:
 
@@ -535,28 +568,20 @@ class Scenario:
 
         # Feasibility check
         current_machine = self._factory.get_machine_by_id(selected_product.current_state.location_machine_id)
-        processing_skill_available = action_key.skill_id in current_machine.skill_by_id_dict.keys()
+        processing_skill_available = action_key.skill_id in current_machine.skill_by_id_dict
 
         valid_transport_task = False
 
         # If processing skill was found, there is no need to search for a transport skill
         if not processing_skill_available:
 
-            for transport_machine in self._factory.transport_machine_by_id_dict.values():
+            if action_key.task_id in self._factory.transport_task_by_id_dict:
 
-                transport_task_list = self._factory.transport_task_list_by_transport_dict[transport_machine.unique_id]
+                # Check if source machine matches current location
+                if (self._factory.transport_task_by_id_dict[action_key.task_id].source_machine_id
+                        == selected_product.current_state.location_machine_id):
 
-                # TODO Speed up by adding "index of" data structure for faster lookups
-                for transport_task in transport_task_list:
-
-                    if transport_task.unique_id == action_key.task_id:
-
-                        # Check if source machine matches current location
-                        if transport_task.source_machine_id == selected_product.current_state.location_machine_id:
-                            valid_transport_task = True
-
-                        # Exit loop after task was found
-                        break
+                    valid_transport_task = True
 
         # The requested skill must either be available at the current machine or be a transport skill with the
         # current machine as the source machine, otherwise the action is illegal.
@@ -566,8 +591,8 @@ class Scenario:
         if selected_product.target_state.contains_task_with_id(action_key.task_id):
             selected_task = selected_product.target_state.get_task_by_id(action_key.task_id)
 
-        elif self._factory.contains_transport_task_with_id(action_key.task_id):
-            selected_task = self._factory.get_transport_task_with_id(action_key.task_id)
+        elif action_key.task_id in self._factory.transport_task_by_id_dict:
+            selected_task = self._factory.transport_task_by_id_dict[action_key.task_id]
 
         else:
             raise ValueError(f"Task with id {action_key.task_id} could not be found.")
@@ -581,18 +606,15 @@ class Scenario:
 
         return task_result
 
-    def execute_action_idx_sequence(self, seq: np.ndarray, check_validity: bool = False, random_seed: int | None = None) -> Tuple[float, float, float, bool, int, List[int]]:
+    def execute_action_idx_sequence(self, seq: np.ndarray, check_validity: bool = False, random_seed: int | None = None) -> tuple[bool, int, list[int]]:
         """
         Roll out a sequence of action indices in the environment.
         Returns:
-            total_time, total_energy, done, steps_used, actions_taken
+            done, steps_used, actions_taken
         """
 
         self.reset(random_seed=random_seed)
 
-        total_time = 0.0
-        total_energy = 0.0
-        sequence_reliability = 1.0
         actions_taken = []
         all_products_done = False
 
@@ -613,10 +635,6 @@ class Scenario:
             if task_result is None:
                 break
 
-            # accumulate costs if present
-            total_time += task_result.total_time
-            total_energy += task_result.total_energy
-            sequence_reliability *= task_result.skill.reliability
             actions_taken.append(int(action_idx))
 
             if all_products_done:
@@ -624,7 +642,26 @@ class Scenario:
 
         steps_used = len(actions_taken)
 
-        return total_time, total_energy, sequence_reliability, all_products_done, steps_used, actions_taken
+        return all_products_done, steps_used, actions_taken
+
+    def print_task_result_history(self, show_numerical_index: bool = False) -> None:
+
+        for idx, task_result in enumerate(self._task_result_history):
+
+            line_str = ""
+
+            if show_numerical_index:
+                 line_str += f"{idx+1}. "
+
+            line_str += f"{task_result} "
+
+            print(line_str)
+
+    def calculate_total_cost(self, objective_function: ObjectiveFunction) -> float:
+
+        return objective_function(time_cost=self._time_sum,
+                                  energy_cost=self._energy_sum,
+                                  reliability=self._sequence_reliability)
 
     def reset(self, random_seed: int = None) -> None:
 
@@ -635,11 +672,12 @@ class Scenario:
 
         self._factory = Factory()
         self._product_by_id_dict = {}
-        self._executed_action_history = []
+        self._task_result_history = []
 
         self._step_count = 0
         self._time_sum = 0.0
         self._energy_sum = 0.0
+        self._sequence_reliability = 1.0
         self._done_products = 0
 
         self._load_from_json(self._file_path)

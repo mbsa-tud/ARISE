@@ -4,14 +4,13 @@
 Module containing the machine class definitions
 
 Author: Patrick Fischer
-Version: 0.0.2
+Version: 0.0.3
 """
 
 __author__ = "Patrick Fischer"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 from abc import ABC, abstractmethod
-from typing import Type
 
 from src.arise_project.model.tasks import ProcessingTask, TransportTask, Task
 from src.arise_project.model.task_results import TaskResult
@@ -179,7 +178,7 @@ class Machine(ABC):
 
         return resulting_reliability_value, resulting_used_skill
 
-    def get_skill_by_type(self, skill_type: Type[Skill]) -> Skill | None:
+    def get_skill_by_type(self, skill_type: type[Skill]) -> Skill | None:
         """
         Find a skill object of the provided type
         """

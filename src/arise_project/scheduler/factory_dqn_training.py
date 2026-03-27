@@ -16,6 +16,7 @@ import time
 import shutil
 from pathlib import Path
 
+import numpy as np
 from stable_baselines3 import DQN
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback
@@ -24,24 +25,18 @@ from stable_baselines3.common.env_checker import check_env
 
 from jsonschema import validate, ValidationError
 
+from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
+from arise_project.model.objective import ObjectiveFunction
+from arise_project.model.optimization_method import OptimizationMethod
+from arise_project.model.optimization_result import OptimizationResult
+from arise_project.tools.hash_generation import get_scenario_output_dir_path
 from src.arise_project.config.paths import DIR_NAME_LOGS, FILE_NAME_DQN_CONFIG, FILE_NAME_BEST_MODEL, \
     FILE_NAME_FINAL_MODEL, DIR_NAME_DQN, DIR_NAME_MODELS, DIR_NAME_BACKUP
 
-from src.arise_project.tools.hash_generation import get_canonical_hash_scenario_json, get_canonical_hash_dqn_config_json
+from src.arise_project.tools.hash_generation import get_canonical_hash_dqn_config_json
 from src.arise_project.config.paths import FILE_DQN_CONFIG_JSON_PATH
 from src.arise_project.model.scenario import Scenario
 from src.arise_project.scheduler.factory_gym_env import FactoryEnv
-
-
-def get_output_dir_path(scenario_file_path: Path) -> Path:
-    """
-    Calculate canonical hash, create directory name and make directory if it doesn't exist yet.
-    """
-
-    hash_str = get_canonical_hash_scenario_json(file_path=scenario_file_path)
-    output_dir_path = scenario_file_path.parent / f"{scenario_file_path.stem}_{hash_str}"
-
-    return output_dir_path
 
 
 def get_dqn_model_dir_path(scenario_file_path: Path, output_dir_path: Path) -> Path:
@@ -100,11 +95,8 @@ def run_training(scenario_file_path: Path):
     check_env(train_env, warn=True)
     train_env = Monitor(train_env)
 
-    # Reset unique ID counters
-    Scenario.reset_all()
-
     # Create a new scenario clone for evaluation
-    eval_scenario = Scenario(file_path=scenario_file_path)
+    eval_scenario = Scenario(file_path=scenario_file_path, reset_class=True)
 
     # Build the evaluation environment based on the DQN configuration file
     eval_env = FactoryEnv(eval_scenario,
@@ -118,7 +110,7 @@ def run_training(scenario_file_path: Path):
     eval_env = Monitor(eval_env)
 
     # Get scenario output directory path (based on hash value of scenario JSON file)
-    output_dir_path = get_output_dir_path(scenario_file_path=scenario_file_path)
+    output_dir_path = get_scenario_output_dir_path(scenario_file_path=scenario_file_path)
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Get dqn model output directory path (based on hash value of dqn config JSON file)
@@ -180,10 +172,17 @@ def run_training(scenario_file_path: Path):
     print("Done.")
 
 
-def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = False, use_best_model: bool = False):
+def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunction,
+                  count: int = 1, quick_eval: bool = False, use_best_model: bool = False,
+                  progress_updater = DummyProgressUpdater()) -> OptimizationResult:
+
+    progress_updater.text = "Preparing DQN inference..."
+    progress_updater.percentage = 0
+
+    start_time = time.time()
 
     # Get output directory path (based on hash value of JSON file)
-    output_dir_path = get_output_dir_path(scenario_file_path=scenario_file_path)
+    output_dir_path = get_scenario_output_dir_path(scenario_file_path=scenario_file_path)
 
     if not output_dir_path.exists():
         raise FileNotFoundError(f"Directory '{output_dir_path.name}' doesn't exist. Please train a model first.")
@@ -196,9 +195,9 @@ def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = F
     # Load the DQN training configuration
     dqn_config_dict = load_dqn_config(scenario_file_path=scenario_file_path)
 
-    scenario = Scenario(file_path=scenario_file_path)
+    scenario = Scenario(file_path=scenario_file_path, reset_class=True)
 
-    original_env = FactoryEnv(scenario,
+    original_env = FactoryEnv(scenario=scenario,
                               alpha=dqn_config_dict["environment"]["alpha"],
                               beta=dqn_config_dict["environment"]["beta"],
                               max_steps=dqn_config_dict["environment"]["max_steps"],
@@ -220,9 +219,15 @@ def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = F
 
     if quick_eval:
 
+        progress_updater.text = "Quick evaluation..."
+        progress_updater.percentage = 10
+
         # Quick evaluation
         mean_r, std_r = evaluate_policy(model, env, n_eval_episodes=50, deterministic=True)
         print(f"\n--> DQN evaluation - Mean reward: {mean_r:.3f} ± {std_r:.3f}\n")
+
+    progress_updater.text = "Running DQN inference..."
+    progress_updater.percentage = 25
 
     shortest_done_length = 999
 
@@ -234,6 +239,7 @@ def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = F
         obs, info = env.reset(seed=2025)
         done = False
         truncated = False
+        action_idx_sequence = []
 
         counter = 0
 
@@ -247,6 +253,8 @@ def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = F
             action_idx, _ = model.predict(obs, deterministic=True)
             obs, reward, done, truncated, info = env.step(action_idx)
 
+            action_idx_sequence.append(int(action_idx))
+
             print(f"{counter}. {original_env.scenario.sorted_action_catalog[action_idx]} -> {original_env.scenario.get_product_states()}")
 
         print(f"Time {original_env.scenario.time_sum:.2f} & Energy {original_env.scenario.energy_sum:.2f} -> {time.time() - start_time:.5f} seconds")
@@ -255,3 +263,22 @@ def run_inference(scenario_file_path: Path, count: int = 1, quick_eval: bool = F
         shortest_done_length = min(shortest_done_length, counter)
 
     print(f"Shortest sequence until done: {shortest_done_length}")
+
+    progress_updater.text = "Done."
+    progress_updater.percentage = 100
+
+    scenario.reset()
+
+    # Re-simulate to get actual actions taken until done
+    _, _, actions_taken = scenario.execute_action_idx_sequence(np.array(action_idx_sequence))
+
+
+    return OptimizationResult(action_idx_sequence=list(action_idx_sequence),
+                              task_result_list=scenario.task_result_history,
+                              total_time=scenario.time_sum,
+                              total_energy=scenario.energy_sum,
+                              sequence_reliability=scenario.sequence_reliability,
+                              objective_function=objective_function,
+                              other_params_dict={"reward": reward},
+                              total_duration_seconds=(time.time() - start_time),
+                              opt_method=OptimizationMethod.OPT_RL_DQN)
