@@ -12,19 +12,24 @@ __version__ = "0.0.3"
 
 import json
 import random
+from datetime import datetime
+from itertools import combinations, product
 
 import numpy as np
 from jsonschema import validate, ValidationError
 
 from pathlib import Path
 
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.model.variability import ProcessVariability
-from src.arise_project.config.paths import FILE_SCENARIO_JSON_SCHEMA_PATH
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.tools.hash_generation import get_scenario_data_dir_path
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.variability import ProcessVariability
+from src.arise_project.config.paths import FILE_SCENARIO_JSON_SCHEMA_PATH, DIR_NAME_OPT_RESULTS
 from src.arise_project.model.action_key import ActionKey
 from src.arise_project.model.factory import Factory
 from src.arise_project.model.machines import StorageMachine, DrillingMachine, CuttingMachine, MillingMachine, \
-    AutomatedGuidedVehicle, ThreeAxesRobot, ConveyorBelt
+    AutomatedGuidedVehicle, ThreeAxisRobot, ConveyorBelt
 from src.arise_project.model.skills import MillingSkill, DrillingSkill, CuttingSkill, TransportSkill, StoreSkill, \
     RetrieveSkill
 
@@ -35,7 +40,7 @@ from src.arise_project.model.product_state import ProductState
 from src.arise_project.model.tasks import TransportTask
 
 
-class Scenario:
+class ScenarioCore:
 
     def __init__(self, file_path: Path, random_seed: int | None = None, reset_class: bool = False) -> None:
 
@@ -45,11 +50,27 @@ class Scenario:
         if random_seed is not None:
             random.seed(random_seed)
 
+        self._step_count = 0
+        self._time_sum = 0.0
+        self._energy_sum = 0.0
+        self._sequence_reliability = 1.0
+        self._done_products = 0
+
         self._factory = Factory()
         self._product_by_id_dict = {}
         self._task_result_history = []
 
         self._sorted_action_catalog: list[ActionKey] = []
+
+        self._file_path = file_path
+        self._load_from_json(file_path=file_path)
+
+    def reset(self, random_seed: int = None) -> None:
+
+        if random_seed is not None:
+            random.seed(random_seed)
+
+        ScenarioCore.reset_all()
 
         self._step_count = 0
         self._time_sum = 0.0
@@ -57,35 +78,13 @@ class Scenario:
         self._sequence_reliability = 1.0
         self._done_products = 0
 
-        self._file_path = file_path
+        self._factory = Factory()
+        self._product_by_id_dict = {}
+        self._task_result_history = []
+
+        self._sorted_action_catalog: list[ActionKey] = []
+
         self._load_from_json(self._file_path)
-
-    @property
-    def factory(self) -> Factory:
-        return self._factory
-
-    @property
-    def product_by_id_dict(self) -> dict[str, Product]:
-        return self._product_by_id_dict
-
-    def get_sorted_product_list(self) -> list[Product]:
-        """
-        Make sure list of products is always sorted alphabetically by unique id to ensure consistency
-        :return: Sorted list of products in the factory (list)
-        """
-
-        result_list = list(self._product_by_id_dict.values())
-        result_list.sort()
-
-        return result_list
-
-    @property
-    def task_result_history(self) -> list[TaskResult]:
-        return self._task_result_history
-
-    @property
-    def sorted_action_catalog(self) -> list[ActionKey]:
-        return self._sorted_action_catalog
 
     @property
     def step_count(self) -> int:
@@ -103,6 +102,57 @@ class Scenario:
     def sequence_reliability(self) -> float:
         return self._sequence_reliability
 
+    @property
+    def done_products(self) -> int:
+        return self._done_products
+
+    @property
+    def factory(self) -> Factory:
+        return self._factory
+
+    @property
+    def product_by_id_dict(self) -> dict[str, Product]:
+        return self._product_by_id_dict
+
+    @property
+    def task_result_history(self) -> list[TaskResult]:
+        return self._task_result_history
+
+    @property
+    def sorted_action_catalog(self) -> list[ActionKey]:
+        return self._sorted_action_catalog
+
+    @property
+    def file_path(self) -> Path:
+        return self._file_path
+
+    def get_sorted_product_list(self) -> list[Product]:
+        """
+        Make sure list of products is always sorted alphabetically by unique id to ensure consistency
+        :return: Sorted list of products in the factory (list)
+        """
+
+        result_list = list(self._product_by_id_dict.values())
+        result_list.sort()
+
+        return result_list
+
+    def calculate_total_cost(self, objective_function: ObjectiveFunction) -> float:
+
+        return objective_function(time_cost=self._time_sum,
+                                  energy_cost=self._energy_sum,
+                                  reliability=self._sequence_reliability)
+
+    def is_done(self) -> bool:
+
+        # Not done as long as at least one product exists which is not done
+        for product in self._product_by_id_dict.values():
+
+            if not product.is_done():
+                return False
+
+        return True
+
     def _load_from_json(self, file_path: Path) -> None:
 
         with open(file_path, 'r') as json_file:
@@ -119,7 +169,6 @@ class Scenario:
             print("Unable to load scenario due to JSON validation error:", e.message)
 
         # --- Create the factory ---
-
         self._factory = Factory()
         factory_dict = data_dict["factory"]
         stationary_machine_obj_by_name_dict = {}
@@ -256,7 +305,7 @@ class Scenario:
                                                                                 uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
                                                                                 normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
 
-                tar = ThreeAxesRobot(name=tpm["name"], transport_skill=transport_skill)
+                tar = ThreeAxisRobot(name=tpm["name"], transport_skill=transport_skill)
 
                 self._factory.add_machine(tar)
                 self._factory.create_connections(transporter_machine=tar,
@@ -296,6 +345,8 @@ class Scenario:
 
                 raise ValueError(f"The 'starting_location' and 'target_location' must be of type 'StorageMachine'.")
 
+            task_by_name_dict : dict[str, ProcessingTask] = {}
+
             # Create the specified number of products
             for i in range(0, product_dict["count"]):
 
@@ -309,17 +360,41 @@ class Scenario:
                                                      center_y=task["params"]["center_y"],
                                                      radius=task["params"]["radius"])
 
+                        task_by_name_dict[task["name"]] = drilling_task
+
                         processing_task_list.append(drilling_task)
 
                     elif task["class"] == "CuttingTask":
 
-                        cutting_task = CuttingTask(total_length=task["params"]["total_length"])
+                        cutting_task = CuttingTask(start_x=task["params"]["start_x"],
+                                                   start_y=task["params"]["start_y"],
+                                                   end_x=task["params"]["end_x"],
+                                                   end_y=task["params"]["end_y"])
+
+                        task_by_name_dict[task["name"]] = cutting_task
+
                         processing_task_list.append(cutting_task)
 
                     elif task["class"] == "MillingTask":
 
-                        milling_task = MillingTask(total_area=task["params"]["total_area"])
+                        milling_task = MillingTask(center_x=task["params"]["center_x"],
+                                                   center_y=task["params"]["center_y"],
+                                                   radius=task["params"]["radius"])
+
+                        task_by_name_dict[task["name"]] = milling_task
+
                         processing_task_list.append(milling_task)
+
+                # Go through tasks again to add preconditions using generated unique IDs
+                for task in product_dict["processing_tasks"]:
+
+                    for task_precondition in task["preconditions"]:
+
+                        current_task_name = task["name"]
+                        task_precondition_name = task_precondition["task_name"]
+
+                        task_obj = task_by_name_dict[current_task_name]
+                        task_obj.add_precondition_task_id(task_by_name_dict[task_precondition_name].unique_id)
 
                 # Generate a product with an individual processing task list
                 new_product = Plate(width=product_dict["params"]["width"],
@@ -342,7 +417,7 @@ class Scenario:
 
         for product in self._product_by_id_dict.values():
 
-            for task in product.get_remaining_processing_tasks():
+            for task in product.get_remaining_processing_tasks_with_preconditions():
 
                 for skill_type in task.possible_skill_types:
 
@@ -363,35 +438,6 @@ class Scenario:
                         continue
 
                     task_result = transport_machine.calculate(product, transport_task)
-                    all_possible_actions.append(task_result)
-
-        return all_possible_actions
-
-    def get_action_identities(self) -> list[ActionKey]:
-
-        return [ActionKey(product=task_result.product,
-                          task=task_result.task,
-                          skill=task_result.skill)
-
-                for task_result in self.get_actions()]
-
-    def get_specific_actions(self) -> list[TaskResult]:
-        """
-        Returns a list of all possible actions available based on the state of the simulation (in this case product).
-        Actions are identified and precalculated task results, whose tasks have not yet been executed.
-
-        :return: list of task results (TaskResult)
-        """
-
-        all_possible_actions = []
-
-        for task in self.get_sorted_product_list()[0].get_remaining_processing_tasks():
-
-            for skill_type in task.possible_skill_types:
-
-                for machine in self.factory.get_machines_by_skill_type(skill_type):
-
-                    task_result = machine.calculate(self.get_sorted_product_list()[0], task)
                     all_possible_actions.append(task_result)
 
         return all_possible_actions
@@ -526,7 +572,12 @@ class Scenario:
         return self.step(action_key=action_key)
 
     def get_feasible_actions(self) -> list[ActionKey]:
-        return self.get_action_identities()
+
+        return [ActionKey(product=task_result.product,
+                          task=task_result.task,
+                          skill=task_result.skill)
+
+                for task_result in self.get_actions()]
 
     def execute_action(self, task_result: TaskResult) -> None:
 
@@ -644,6 +695,199 @@ class Scenario:
 
         return all_products_done, steps_used, actions_taken
 
+    @classmethod
+    def reset_all(cls):
+
+        # TODO Find a more elegant solution than listing all classes here
+        class_list = [DrillingMachine, MillingMachine, CuttingMachine,
+                      ConveyorBelt, AutomatedGuidedVehicle, ThreeAxisRobot, StorageMachine,
+                      DrillingSkill, MillingSkill, CuttingSkill, TransportSkill, StoreSkill, RetrieveSkill,
+                      DrillingTask, MillingTask, CuttingTask, TransportTask,
+                      Plate]
+
+        for class_type in class_list:
+            class_type.reset_unique_id_ctr()
+
+
+class Scenario(ScenarioCore):
+
+    def __init__(self, file_path: Path, random_seed: int | None = None, reset_class: bool = False) -> None:
+
+        super().__init__(file_path=file_path, random_seed=random_seed, reset_class=reset_class)
+
+        self._name = ""
+        self._note = ""
+        self._last_modified_dt: datetime = datetime.now()
+
+        self._opt_result_dict: dict[OptimizationMethod, OptimizationResult | None] = {}
+
+        self._file_path = file_path
+        self._load_additional_info_from_json(self._file_path)
+
+        # Data directory path based on hash value of scenario JSON file
+        self._data_dir_path = get_scenario_data_dir_path(scenario_file_path=file_path)
+        self._data_dir_path.mkdir(parents=True, exist_ok=True)
+
+        self._opt_result_dir_path = self._data_dir_path / DIR_NAME_OPT_RESULTS
+        self._opt_result_dir_path.mkdir(parents=True, exist_ok=True)
+
+        self.load_opt_results()
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def note(self) -> str:
+        return self._note
+
+    @property
+    def last_modified_dt(self) -> datetime:
+        return self._last_modified_dt
+
+    @property
+    def opt_result_dict(self) -> dict[OptimizationMethod, OptimizationResult | None]:
+        return self._opt_result_dict
+
+    @property
+    def data_dir_path(self) -> Path:
+        return self._data_dir_path
+
+    @property
+    def opt_result_dir_path(self) -> Path:
+        return self._opt_result_dir_path
+
+    def _load_additional_info_from_json(self, file_path: Path) -> None:
+
+        with open(file_path, 'r') as json_file:
+            data_dict = json.load(json_file)
+
+        with open(FILE_SCENARIO_JSON_SCHEMA_PATH, 'r') as schema_file:
+            schema = json.load(schema_file)
+
+        # Validate the JSON data against the schema
+        try:
+            validate(instance=data_dict, schema=schema)
+
+        except ValidationError as e:
+            print("Unable to load scenario due to JSON validation error:", e.message)
+
+        self._name = data_dict["scenario_name"]
+        self._note = data_dict["scenario_note"]
+
+    def load_opt_results(self):
+
+        for opt_method in OptimizationMethod:
+
+            self._opt_result_dict[opt_method] = OptimizationResult.pickle_load(scenario_dir=self._opt_result_dir_path, opt_method=opt_method)
+
+    def calculate_total_state_count(self) -> int:
+
+        # TODO This assumes that all products are the same, which may not necessarily be the case
+        first_product = self.get_sorted_product_list()[0]
+        product_processing_task_count = len(first_product.target_state.processing_tasks)
+
+        # Cardinality of the power set (example: {}, {CT1}, ... {CT1, DT1},... {CT1, DT1, MT1})
+        product_state_combinations = 2 ** product_processing_task_count
+
+        # Each stationary machine is a possible location
+        location_count = len(self._factory.stationary_machine_by_id_dict)
+
+        # Product may have any state at any location, therefore multiplication
+        total_state_count = product_state_combinations * location_count
+
+        return total_state_count
+
+    def calculate_feasible_action_count_for_product_states(self, product_by_id_dict: dict[str, Product]) -> int:
+
+        # TODO Incorporate with get_actions function?
+
+        all_possible_actions = []
+
+        for product in product_by_id_dict.values():
+
+            for task in product.get_remaining_processing_tasks_with_preconditions():
+
+                for skill_type in task.possible_skill_types:
+
+                    for machine in self._factory.get_machines_by_skill_type(skill_type):
+
+                        if product.current_state.location_machine_id == machine.unique_id:
+                            task_result = machine.calculate(product, task)
+                            all_possible_actions.append(task_result)
+
+            for transport_machine in self._factory.transport_machine_by_id_dict.values():
+
+                for transport_task in self._factory.transport_task_list_by_transport_dict[transport_machine.unique_id]:
+
+                    # Only consider transportation from current machine to any machine other than the current machine
+                    if ((transport_task.source_machine_id != product.current_state.location_machine_id)
+                            or (transport_task.target_machine_id == product.current_state.location_machine_id)):
+                        continue
+
+                    task_result = transport_machine.calculate(product, transport_task)
+                    all_possible_actions.append(task_result)
+
+        return len(all_possible_actions)
+
+    def get_all_possible_product_states(self) -> dict[str, set[ProductState]]:
+
+        result_dict = {}
+
+        for product in self.get_sorted_product_list():
+
+            all_possible_states_set = set()
+
+            proc_task_list = list(product.target_state.processing_tasks)
+            stationary_machines_list = self._factory.get_sorted_all_stationary_machines_list()
+
+            for r in range(len(proc_task_list) + 1):
+
+                for combo in combinations(proc_task_list, r):
+
+                    for stationary_machine in stationary_machines_list:
+                        product_state = ProductState(location_machine_id=stationary_machine.unique_id,
+                                                     processing_tasks=set(combo))
+
+                        all_possible_states_set.add(product_state)
+
+            result_dict[product.unique_id] = all_possible_states_set
+
+        return result_dict
+
+    @staticmethod
+    def iterate_all_system_states(product_states):
+        """
+        product_states: dict[str, set[State]]
+        Returns tuples of (product_id, chosen_state)
+        """
+
+        keys = list(product_states.keys())
+        sets = [list(product_states[k]) for k in keys]
+
+        # Cartesian product across all per-product state sets
+        for combo in product(*sets):
+            yield {keys[i]: combo[i] for i in range(len(keys))}
+
+    def calculate_total_transition_count(self) -> int:
+
+        total_count = 0
+        result_dict = self.get_all_possible_product_states()
+
+        for system_state in Scenario.iterate_all_system_states(result_dict):
+
+            new_dict = {}
+
+            for product_id in system_state.keys():
+
+                product_obj = self.product_by_id_dict[product_id]
+                product_obj.current_state = system_state[product_id]
+                new_dict[product_obj.unique_id] = product_obj
+
+            total_count += self.calculate_feasible_action_count_for_product_states(new_dict)
+
+        return total_count
+
     def print_task_result_history(self, show_numerical_index: bool = False) -> None:
 
         for idx, task_result in enumerate(self._task_result_history):
@@ -656,51 +900,3 @@ class Scenario:
             line_str += f"{task_result} "
 
             print(line_str)
-
-    def calculate_total_cost(self, objective_function: ObjectiveFunction) -> float:
-
-        return objective_function(time_cost=self._time_sum,
-                                  energy_cost=self._energy_sum,
-                                  reliability=self._sequence_reliability)
-
-    def reset(self, random_seed: int = None) -> None:
-
-        if random_seed is not None:
-            random.seed(random_seed)
-
-        Scenario.reset_all()
-
-        self._factory = Factory()
-        self._product_by_id_dict = {}
-        self._task_result_history = []
-
-        self._step_count = 0
-        self._time_sum = 0.0
-        self._energy_sum = 0.0
-        self._sequence_reliability = 1.0
-        self._done_products = 0
-
-        self._load_from_json(self._file_path)
-
-    def is_done(self) -> bool:
-
-        # Not done as long as at least one product exists which is not done
-        for product in self._product_by_id_dict.values():
-
-            if not product.is_done():
-                return False
-
-        return True
-
-    @classmethod
-    def reset_all(cls):
-
-        # TODO Find a more elegant solution than listing all classes here
-        class_list = [DrillingMachine, MillingMachine, CuttingMachine,
-                      ConveyorBelt, AutomatedGuidedVehicle, ThreeAxesRobot, StorageMachine,
-                      DrillingSkill, MillingSkill, CuttingSkill, TransportSkill, StoreSkill, RetrieveSkill,
-                      DrillingTask, MillingTask, CuttingTask, TransportTask,
-                      Plate]
-
-        for class_type in class_list:
-            class_type.reset_unique_id_ctr()

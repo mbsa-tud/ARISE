@@ -16,11 +16,13 @@ from enum import Enum
 class OptimizationMethod(Enum):
 
     OPT_A_STAR = "A_STAR"
+    OPT_DIJKSTRA = "DIJKSTRA"
     OPT_DFS = "DFS"
     OPT_IDDFS = "IDDFS"
     OPT_NSGA2 = "NSGA2"
     OPT_NSGA3 = "NSGA3"
     OPT_RL_DQN = "RL_DQN"
+    OPT_LLM_AGENT = "LLM_AGENT"
     OPT_HUMAN = "HUMAN"
 
     def get_short_name(self) -> str:
@@ -29,6 +31,8 @@ class OptimizationMethod(Enum):
 
             case OptimizationMethod.OPT_A_STAR:
                 return "A*"
+            case OptimizationMethod.OPT_DIJKSTRA:
+                return "DIJKSTRA"
             case OptimizationMethod.OPT_DFS:
                 return "DFS"
             case OptimizationMethod.OPT_IDDFS:
@@ -38,16 +42,20 @@ class OptimizationMethod(Enum):
             case OptimizationMethod.OPT_NSGA3:
                 return "NSGA-III"
             case OptimizationMethod.OPT_RL_DQN:
-             return "RL / DQN"
+                return "RL / DQN"
+            case OptimizationMethod.OPT_LLM_AGENT:
+                return "LLM AGENT"
             case OptimizationMethod.OPT_HUMAN:
-             return "Human"
+                return "Human"
 
     def get_long_name(self) -> str:
 
         match self:
 
             case OptimizationMethod.OPT_A_STAR:
-                return "A* / Dijkstra Algorithm"
+                return "A* Algorithm"
+            case OptimizationMethod.OPT_DIJKSTRA:
+                return "Dijkstra Algorithm"
             case OptimizationMethod.OPT_DFS:
                 return "Depth-First Search"
             case OptimizationMethod.OPT_IDDFS:
@@ -57,6 +65,8 @@ class OptimizationMethod(Enum):
             case OptimizationMethod.OPT_NSGA3:
                 return "Non-dominated Sorting Genetic Algorithm (III)"
             case OptimizationMethod.OPT_RL_DQN:
-             return "Reinforcement Learning / Deep Q-Network"
+                return "Reinforcement Learning / Deep Q-Network"
+            case OptimizationMethod.OPT_LLM_AGENT:
+                return "Large Language Model Agent"
             case OptimizationMethod.OPT_HUMAN:
-             return "Human (Simulation Results)"
+                return "Human (Simulation Results)"

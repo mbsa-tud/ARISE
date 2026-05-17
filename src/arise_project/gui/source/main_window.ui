@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>ICM ARISE - Factory Sandbox</string>
+   <string>ICM ARISE - Factory Simulation</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -20,6 +20,431 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
+      <widget class="QWidget" name="tab_scenario">
+       <attribute name="title">
+        <string>Scenario</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_14">
+        <item>
+         <widget class="QWidget" name="widget_scenario" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>35</height>
+           </size>
+          </property>
+          <widget class="QLabel" name="label_scenario_overview_title">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>0</y>
+             <width>181</width>
+             <height>21</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Scenario Overview</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="pushButton_scenario_overview_reload">
+           <property name="geometry">
+            <rect>
+             <x>820</x>
+             <y>0</y>
+             <width>131</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Reload</string>
+           </property>
+          </widget>
+          <widget class="QCheckBox" name="checkBox_scenario_overview_show_states_transitions">
+           <property name="geometry">
+            <rect>
+             <x>650</x>
+             <y>-1</y>
+             <width>161</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Show states / transitions</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="tableWidget_scenario_overview">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_13">
+          <item>
+           <widget class="QLabel" name="label_scenario_overview_abbreviations">
+            <property name="font">
+             <font>
+              <pointsize>7</pointsize>
+              <bold>false</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>PT = Processing Task | PS = Processing Skill | SM = Storage Machine | PM = Processing Machine | TM = Transport Machine | AC = Action Catalog</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_scenario_details" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>100</height>
+           </size>
+          </property>
+          <widget class="QLabel" name="label_scenario_details_name">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>0</y>
+             <width>600</width>
+             <height>21</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="pushButton_scenario_load">
+           <property name="geometry">
+            <rect>
+             <x>820</x>
+             <y>60</y>
+             <width>131</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Load</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_file_name_titel">
+           <property name="geometry">
+            <rect>
+             <x>20</x>
+             <y>50</y>
+             <width>31</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>File:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_file_name">
+           <property name="geometry">
+            <rect>
+             <x>110</x>
+             <y>50</y>
+             <width>250</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_modified_titel">
+           <property name="geometry">
+            <rect>
+             <x>20</x>
+             <y>70</y>
+             <width>61</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Modified:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_modified">
+           <property name="geometry">
+            <rect>
+             <x>110</x>
+             <y>70</y>
+             <width>250</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_note_title">
+           <property name="geometry">
+            <rect>
+             <x>20</x>
+             <y>30</y>
+             <width>61</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Note:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_note">
+           <property name="geometry">
+            <rect>
+             <x>110</x>
+             <y>30</y>
+             <width>250</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_milling_machines_title">
+           <property name="geometry">
+            <rect>
+             <x>420</x>
+             <y>30</y>
+             <width>101</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Milling Machines:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_milling_machines">
+           <property name="geometry">
+            <rect>
+             <x>530</x>
+             <y>30</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_cutting_machines_title">
+           <property name="geometry">
+            <rect>
+             <x>420</x>
+             <y>50</y>
+             <width>111</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Cutting Machines:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_cutting_machines">
+           <property name="geometry">
+            <rect>
+             <x>530</x>
+             <y>50</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_drilling_machines_title">
+           <property name="geometry">
+            <rect>
+             <x>420</x>
+             <y>70</y>
+             <width>101</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Drilling Machines:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_drilling_machines">
+           <property name="geometry">
+            <rect>
+             <x>530</x>
+             <y>70</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_conveyor_belts">
+           <property name="geometry">
+            <rect>
+             <x>740</x>
+             <y>70</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_conveyor_belts_title">
+           <property name="geometry">
+            <rect>
+             <x>570</x>
+             <y>70</y>
+             <width>101</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Conveyor Belts:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_agvs_title">
+           <property name="geometry">
+            <rect>
+             <x>570</x>
+             <y>30</y>
+             <width>161</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Automated Guided Vehicles:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_agvs">
+           <property name="geometry">
+            <rect>
+             <x>740</x>
+             <y>30</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_three_axis_robots_title">
+           <property name="geometry">
+            <rect>
+             <x>570</x>
+             <y>50</y>
+             <width>121</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Three-Axis Robots:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="label_scenario_details_three_axis_robots">
+           <property name="geometry">
+            <rect>
+             <x>740</x>
+             <y>50</y>
+             <width>25</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>-</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tab_factory">
        <attribute name="title">
         <string>Factory</string>
@@ -109,14 +534,70 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QGroupBox" name="groupBox_product_config">
-          <property name="title">
-           <string>Configuration</string>
-          </property>
+         <widget class="QWidget" name="widget_product_image" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <spacer name="horizontalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_product_image">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_58">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
          </widget>
         </item>
         <item>
          <widget class="QTreeWidget" name="treeWidget_product">
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="maximumSize">
            <size>
             <width>250</width>
@@ -606,12 +1087,27 @@
             <height>16777215</height>
            </size>
           </property>
+          <property name="tabShape">
+           <enum>QTabWidget::Rounded</enum>
+          </property>
           <property name="currentIndex">
            <number>0</number>
           </property>
+          <property name="usesScrollButtons">
+           <bool>false</bool>
+          </property>
+          <property name="documentMode">
+           <bool>false</bool>
+          </property>
+          <property name="tabsClosable">
+           <bool>false</bool>
+          </property>
+          <property name="tabBarAutoHide">
+           <bool>false</bool>
+          </property>
           <widget class="QWidget" name="tab_a_star">
            <attribute name="title">
-            <string>A* / Dijkstra</string>
+            <string>A*</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_8">
             <item>
@@ -657,7 +1153,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>A* / Dijkstra Algorithm</string>
+                <string>A* Algorithm</string>
                </property>
               </widget>
               <widget class="QLabel" name="label_opt_a_star_timestamp">
@@ -676,6 +1172,32 @@
                </property>
                <property name="text">
                 <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_a_star_expansions_title">
+               <property name="geometry">
+                <rect>
+                 <x>650</x>
+                 <y>90</y>
+                 <width>71</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Expansions:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_a_star_expansions">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
                </property>
               </widget>
              </widget>
@@ -932,6 +1454,355 @@
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab_dijkstra">
+           <attribute name="title">
+            <string>Dijkstra</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_17">
+            <item>
+             <widget class="QWidget" name="widget_opt_dijkstra" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>125</height>
+               </size>
+              </property>
+              <widget class="QPushButton" name="pushButton_opt_dijkstra_run">
+               <property name="geometry">
+                <rect>
+                 <x>790</x>
+                 <y>90</y>
+                 <width>131</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>11</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Run Dijkstra</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dijkstra_title">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>0</y>
+                 <width>181</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>11</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Dijkstra Algorithm</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dijkstra_timestamp">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>110</y>
+                 <width>130</width>
+                 <height>20</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <italic>true</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dijkstra_expansions_title">
+               <property name="geometry">
+                <rect>
+                 <x>650</x>
+                 <y>90</y>
+                 <width>71</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Expansions:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dijkstra_expansions">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tableWidget_opt_dijkstra_results">
+              <property name="selectionMode">
+               <enum>QAbstractItemView::SingleSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_15">
+              <item>
+               <spacer name="horizontalSpacer_73">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_total_steps">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Steps:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_total_steps">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_74">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_total_time">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Time:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_total_time">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_75">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_total_energy">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Energy:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_total_energy">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_76">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_sequence_reliability">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Sequence Reliability:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_sequence_reliability">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>1.000</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_77">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_total_cost">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Cost:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_total_cost">
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_78">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_title_total_duration">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Duration:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_dijkstra_total_duration">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0min 0s</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_79">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
           <widget class="QWidget" name="tab_dfs">
            <attribute name="title">
             <string>DFS</string>
@@ -999,6 +1870,67 @@
                </property>
                <property name="text">
                 <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dfs_min_solution_depth_title_2">
+               <property name="geometry">
+                <rect>
+                 <x>600</x>
+                 <y>90</y>
+                 <width>111</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Min. solution depth:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_dfs_min_solution_depth">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_iddfs_max_sequence_length_title_2">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>40</y>
+                 <width>201</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Maximum Sequence Length (Depth):</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_iddfs_max_sequence_length_2">
+               <property name="geometry">
+                <rect>
+                 <x>220</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>15</number>
                </property>
               </widget>
              </widget>
@@ -1322,6 +2254,67 @@
                </property>
                <property name="text">
                 <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_iddfs_min_solution_depth">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_iddfs_min_solution_depth_title">
+               <property name="geometry">
+                <rect>
+                 <x>600</x>
+                 <y>90</y>
+                 <width>111</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Min. solution depth:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_iddfs_max_sequence_length_title">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>40</y>
+                 <width>201</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Maximum Sequence Length (Depth):</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_iddfs_max_sequence_length">
+               <property name="geometry">
+                <rect>
+                 <x>220</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>15</number>
                </property>
               </widget>
              </widget>
@@ -1653,6 +2646,169 @@
                 <string/>
                </property>
               </widget>
+              <widget class="QLabel" name="label_opt_nsga2_hypervolume_title">
+               <property name="geometry">
+                <rect>
+                 <x>640</x>
+                 <y>90</y>
+                 <width>81</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Hypervolume:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga2_hypervolume">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga2_generations_title">
+               <property name="geometry">
+                <rect>
+                 <x>445</x>
+                 <y>40</y>
+                 <width>141</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Number of Generations:</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga2_generations">
+               <property name="geometry">
+                <rect>
+                 <x>580</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>150</number>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga2_population_title">
+               <property name="geometry">
+                <rect>
+                 <x>260</x>
+                 <y>40</y>
+                 <width>101</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Population Size:</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga2_population">
+               <property name="geometry">
+                <rect>
+                 <x>355</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>80</number>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga2_max_sequence_length_title">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>40</y>
+                 <width>161</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Maximum Sequence Length:</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga2_max_sequence_length">
+               <property name="geometry">
+                <rect>
+                 <x>170</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>999</number>
+               </property>
+               <property name="value">
+                <number>100</number>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga2_mutation_probability_title">
+               <property name="geometry">
+                <rect>
+                 <x>670</x>
+                 <y>40</y>
+                 <width>121</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Mutation Probability:</string>
+               </property>
+              </widget>
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_opt_nsga2_mutation_probability">
+               <property name="geometry">
+                <rect>
+                 <x>790</x>
+                 <y>40</y>
+                 <width>100</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="suffix">
+                <string> %</string>
+               </property>
+               <property name="maximum">
+                <double>100.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>10.000000000000000</double>
+               </property>
+              </widget>
              </widget>
             </item>
             <item>
@@ -1982,6 +3138,172 @@
                 <string/>
                </property>
               </widget>
+              <widget class="QLabel" name="label_opt_nsga3_hypervolume">
+               <property name="geometry">
+                <rect>
+                 <x>730</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga3_hypervolume_title">
+               <property name="geometry">
+                <rect>
+                 <x>640</x>
+                 <y>90</y>
+                 <width>81</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Hypervolume:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga3_population_title">
+               <property name="geometry">
+                <rect>
+                 <x>260</x>
+                 <y>40</y>
+                 <width>101</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Population Size:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga3_generations_title">
+               <property name="geometry">
+                <rect>
+                 <x>445</x>
+                 <y>40</y>
+                 <width>141</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Number of Generations:</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga3_max_sequence_length_title">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>40</y>
+                 <width>161</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Maximum Sequence Length:</string>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga3_max_sequence_length">
+               <property name="geometry">
+                <rect>
+                 <x>170</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>100</number>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga3_generations">
+               <property name="geometry">
+                <rect>
+                 <x>580</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>150</number>
+               </property>
+              </widget>
+              <widget class="QSpinBox" name="spinBox_opt_nsga3_population">
+               <property name="geometry">
+                <rect>
+                 <x>355</x>
+                 <y>40</y>
+                 <width>75</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>80</number>
+               </property>
+              </widget>
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_opt_nsga3_mutation_probability">
+               <property name="geometry">
+                <rect>
+                 <x>790</x>
+                 <y>40</y>
+                 <width>100</width>
+                 <height>22</height>
+                </rect>
+               </property>
+               <property name="readOnly">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> %</string>
+               </property>
+               <property name="maximum">
+                <double>100.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>10.000000000000000</double>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_nsga3_mutation_probability_title">
+               <property name="geometry">
+                <rect>
+                 <x>670</x>
+                 <y>40</y>
+                 <width>121</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Mutation Probability:</string>
+               </property>
+              </widget>
              </widget>
             </item>
             <item>
@@ -2268,12 +3590,12 @@
                 <string>Reinforcement Learning / Deep Q-Network</string>
                </property>
               </widget>
-              <widget class="QPushButton" name="pushButton_opt_rl_dqn_training">
+              <widget class="QPushButton" name="pushButton_opt_rl_dqn_run_training_and_inference">
                <property name="geometry">
                 <rect>
-                 <x>650</x>
+                 <x>720</x>
                  <y>90</y>
-                 <width>131</width>
+                 <width>201</width>
                  <height>31</height>
                 </rect>
                </property>
@@ -2284,26 +3606,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>Start Training</string>
-               </property>
-              </widget>
-              <widget class="QPushButton" name="pushButton_opt_rl_dqn_run_inference">
-               <property name="geometry">
-                <rect>
-                 <x>790</x>
-                 <y>90</y>
-                 <width>131</width>
-                 <height>31</height>
-                </rect>
-               </property>
-               <property name="font">
-                <font>
-                 <pointsize>11</pointsize>
-                 <bold>true</bold>
-                </font>
-               </property>
-               <property name="text">
-                <string>Run Inference</string>
+                <string>Run Training &amp;&amp; Inference</string>
                </property>
               </widget>
               <widget class="QLabel" name="label_opt_rl_dqn_timestamp">
@@ -2322,6 +3625,32 @@
                </property>
                <property name="text">
                 <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_rl_dqn_reward">
+               <property name="geometry">
+                <rect>
+                 <x>660</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_rl_dqn_reward_title">
+               <property name="geometry">
+                <rect>
+                 <x>600</x>
+                 <y>90</y>
+                 <width>51</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Reward:</string>
                </property>
               </widget>
              </widget>
@@ -2563,6 +3892,355 @@
               </item>
               <item>
                <spacer name="horizontalSpacer_27">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_llm_agent">
+           <attribute name="title">
+            <string>LLM Agent</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_16">
+            <item>
+             <widget class="QWidget" name="widget_opt_llm_agent" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>125</height>
+               </size>
+              </property>
+              <widget class="QLabel" name="label_opt_llm_agent_title">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>0</y>
+                 <width>311</width>
+                 <height>21</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>11</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Large Language Model Agent</string>
+               </property>
+              </widget>
+              <widget class="QPushButton" name="pushButton_opt_llm_agent_run_prompt">
+               <property name="geometry">
+                <rect>
+                 <x>720</x>
+                 <y>90</y>
+                 <width>201</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>11</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Run Prompt</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_llm_agent_timestamp">
+               <property name="geometry">
+                <rect>
+                 <x>10</x>
+                 <y>110</y>
+                 <width>130</width>
+                 <height>20</height>
+                </rect>
+               </property>
+               <property name="font">
+                <font>
+                 <italic>true</italic>
+                </font>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_llm_agent_tokens">
+               <property name="geometry">
+                <rect>
+                 <x>660</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_llm_agent_tokens_title">
+               <property name="geometry">
+                <rect>
+                 <x>600</x>
+                 <y>90</y>
+                 <width>51</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Tokens:</string>
+               </property>
+              </widget>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tableWidget_opt_llm_agent_results">
+              <property name="selectionMode">
+               <enum>QAbstractItemView::SingleSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_opt_rl_dqn_2">
+              <item>
+               <spacer name="horizontalSpacer_59">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_total_steps">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Steps:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_total_steps">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_60">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_total_time">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Time:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_total_time">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_61">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_total_energy">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Energy:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_total_energy">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_62">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_sequence_reliability">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Sequence Reliability:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_sequence_reliability">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>1.000</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_63">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_total_cost">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total Cost:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_total_cost">
+                <property name="text">
+                 <string>0.00</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_64">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_title_total_duration">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Duration:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_opt_llm_agent_total_duration">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0min 0s</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_65">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
                 </property>
@@ -3002,6 +4680,80 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="tab_analysis">
+       <attribute name="title">
+        <string>Analysis</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_15">
+        <item>
+         <widget class="QWidget" name="widget_analysis" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>30</height>
+           </size>
+          </property>
+          <widget class="QLabel" name="label_analysis_title">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>0</y>
+             <width>181</width>
+             <height>21</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Analysis</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="pushButton_run_analysis">
+           <property name="geometry">
+            <rect>
+             <x>820</x>
+             <y>0</y>
+             <width>131</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Run Analysis</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_analysis">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>550</height>
+           </size>
+          </property>
+          <property name="title">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tab_log">
        <attribute name="title">
         <string>Log</string>
@@ -3016,15 +4768,150 @@
        <attribute name="title">
         <string>Config</string>
        </attribute>
-       <widget class="QComboBox" name="comboBox_optimization_algorithms">
+       <widget class="QGroupBox" name="groupBox">
         <property name="geometry">
          <rect>
           <x>20</x>
           <y>20</y>
-          <width>181</width>
-          <height>22</height>
+          <width>251</width>
+          <height>261</height>
          </rect>
         </property>
+        <property name="title">
+         <string>Auto Run (Analysis)</string>
+        </property>
+        <widget class="QCheckBox" name="checkBox_auto_run_a_star">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>A*</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_iddfs">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>90</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>IDDFS</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_nsga2">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>110</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>NSGA-II</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_nsga3">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>130</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>NSGA-III</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_rl_dqn">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>150</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>RL DQN</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pushButton_opt_auto_run">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>210</y>
+           <width>211</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Auto Run Optimization</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_dijkstra">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>50</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Dijkstra</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_llm_agent">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>170</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>LLM Agent</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="checkBox_auto_run_dfs">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>70</y>
+           <width>80</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>DFS</string>
+         </property>
+        </widget>
        </widget>
       </widget>
      </widget>
@@ -3050,9 +4937,10 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="action_load_scenario_from_file"/>
+    <addaction name="action_switch_scenario_directory"/>
     <addaction name="action_save_scenario_to_file"/>
     <addaction name="separator"/>
+    <addaction name="action_export_analysis"/>
    </widget>
    <widget class="QMenu" name="menu_edit">
     <property name="title">
@@ -3066,9 +4954,9 @@
    <addaction name="menu_help"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="action_load_scenario_from_file">
+  <action name="action_switch_scenario_directory">
    <property name="text">
-    <string>Load scenario...</string>
+    <string>Switch scenario directory...</string>
    </property>
   </action>
   <action name="action_save_scenario_to_file">
@@ -3089,6 +4977,11 @@
   <action name="action_redo">
    <property name="text">
     <string>Redo</string>
+   </property>
+  </action>
+  <action name="action_export_analysis">
+   <property name="text">
+    <string>Export Analysis...</string>
    </property>
   </action>
  </widget>

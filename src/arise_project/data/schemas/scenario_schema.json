@@ -5,6 +5,9 @@
     "scenario_name": {
       "type": "string"
     },
+    "scenario_note": {
+      "type": "string"
+    },
     "factory": {
       "type": "object",
       "properties": {

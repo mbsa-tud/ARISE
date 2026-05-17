@@ -18,16 +18,18 @@ from pathlib import Path
 import numpy as np
 from typing import Iterable
 
-from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.optimization_result import OptimizationResult
-from arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.tools.output_timestamp import print_with_timestamp
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
-from src.arise_project.model.scenario import Scenario
+from src.arise_project.model.scenario import ScenarioCore
+
+OPT_RES_PARAM_MIN_SOLUTION_DEPTH = "min_solution_depth"
 
 
-def dfs_enumerate(scenario: Scenario, max_depth: int | None = None, avoid_cycles: bool = True) -> Iterable[list[int]]:
+def dfs_enumerate(scenario: ScenarioCore, max_depth: int | None = None, avoid_cycles: bool = True) -> Iterable[list[int]]:
     """
     Depth-first enumeration of feasible action sequences via backtracking.
 
@@ -104,7 +106,7 @@ def run_iddfs(scenario_file_path: Path, objective_function: ObjectiveFunction, o
     progress_updater.percentage = 0
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=scenario_file_path, reset_class=True)
+    example_scenario = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
     # Multi-criteria objective, can be split into individual objectives
     min_total_cost = float("inf")
@@ -198,7 +200,7 @@ def run_iddfs(scenario_file_path: Path, objective_function: ObjectiveFunction, o
                               total_energy=example_scenario.energy_sum,
                               sequence_reliability=example_scenario.sequence_reliability,
                               objective_function=objective_function,
-                              other_params_dict={"min_solution_depth": min_solution_depth},
+                              other_params_dict={OPT_RES_PARAM_MIN_SOLUTION_DEPTH: min_solution_depth},
                               total_duration_seconds=(time.time() - start_time),
                               opt_method=opt_method)
 

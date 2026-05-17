@@ -30,13 +30,17 @@ from pymoo.operators.crossover.pntx import TwoPointCrossover
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.indicators.hv import HV
 
-from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.optimization_result import OptimizationResult
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.tools.output_timestamp import print_with_timestamp
+from arise_project.model.nsga_config import NSGAConfig
+from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.tools.output_timestamp import print_with_timestamp
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
-from src.arise_project.model.scenario import Scenario
+from src.arise_project.model.scenario import ScenarioCore
+
+
+OPT_RES_PARAM_HYPERVOLUME = "hypervolume"
 
 
 class FactorySequenceProblem(Problem):
@@ -52,7 +56,7 @@ class FactorySequenceProblem(Problem):
         G[0] = 0 if finished, else 1  (feasibility: must complete all products)
     """
 
-    def __init__(self, scenario: Scenario, seq_len=200, penalty=1e4, use_reliability: bool = False):
+    def __init__(self, scenario: ScenarioCore, seq_len=200, penalty=1e4, use_reliability: bool = False):
 
         self._scenario = scenario
         num_actions = len(self._scenario.sorted_action_catalog)
@@ -111,7 +115,7 @@ class FeasibleSequenceSampling(Sampling):
     After termination, pad sequence to fixed length with random integers (unused once done).
     """
 
-    def __init__(self, scenario: Scenario, seq_len: int):
+    def __init__(self, scenario: ScenarioCore, seq_len: int):
         super().__init__()
         self._scenario = scenario
         self._seq_len = seq_len
@@ -164,7 +168,7 @@ class FeasibilityRepair(Repair):
     replace it with a random feasible action. Stop repairing once episode done.
     """
 
-    def __init__(self, scenario: Scenario):
+    def __init__(self, scenario: ScenarioCore):
         super().__init__()
         self._scenario = scenario
 
@@ -234,8 +238,8 @@ class RandomResetMutation(Mutation):
         return Y
 
 
-def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: int = 200, pop_size: int = 80, n_gen: int = 150,
-                       penalty: float = 1e4, mut_prob: float = 0.15, seed: int = 42, use_reliability: bool = False, verbose: bool = True,
+def run_nsga_algorithm(scenario: ScenarioCore, algorithm: str, nsga_config: NSGAConfig,
+                       seed: int = 42, use_reliability: bool = False, verbose: bool = True,
                        progress_updater=DummyProgressUpdater()) -> Result:
     """
     Run NSGA-II or NSGA-III on the FactorySequenceProblem.
@@ -253,10 +257,11 @@ def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: in
     progress_updater.percentage = 0
 
     # Define problem to minimize
-    problem = FactorySequenceProblem(scenario=scenario, seq_len=seq_len, penalty=penalty, use_reliability=use_reliability)
+    problem = FactorySequenceProblem(scenario=scenario, seq_len=nsga_config.max_sequence_length,
+                                     penalty=nsga_config.penalty, use_reliability=use_reliability)
 
     # Create initial population (random sequence of feasible actions)
-    sampling = FeasibleSequenceSampling(scenario=scenario, seq_len=seq_len)
+    sampling = FeasibleSequenceSampling(scenario=scenario, seq_len=nsga_config.max_sequence_length)
 
     # Define repair method
     repair = FeasibilityRepair(scenario=scenario)
@@ -266,7 +271,7 @@ def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: in
     crossover.repair = repair
 
     # Define mutation method
-    mutation = RandomResetMutation(prob=mut_prob)
+    mutation = RandomResetMutation(prob=nsga_config.mutation_probability)
     mutation.repair = repair
 
     progress_updater.text = f"Defining the algorithm"
@@ -274,7 +279,7 @@ def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: in
 
     if algorithm.lower() == "nsga2":
 
-        algo = NSGA2(pop_size=pop_size, sampling=sampling, crossover=crossover,
+        algo = NSGA2(pop_size=nsga_config.population_size, sampling=sampling, crossover=crossover,
                      mutation=mutation, eliminate_duplicates=True)
 
     elif algorithm.lower() == "nsga3":
@@ -286,15 +291,15 @@ def run_nsga_algorithm(scenario: Scenario, algorithm: str = "nsga2", seq_len: in
             ref_dirs = get_reference_directions("das-dennis", n_dim=3, n_partitions=11)
             pop_size = len(ref_dirs)
         else:
-            ref_dirs = get_reference_directions("das-dennis", n_dim=2, n_points=pop_size)
+            ref_dirs = get_reference_directions("das-dennis", n_dim=2, n_points=nsga_config.population_size)
 
-        algo = NSGA3(pop_size=pop_size, ref_dirs=ref_dirs, sampling=sampling, crossover=crossover,
+        algo = NSGA3(pop_size=nsga_config.population_size, ref_dirs=ref_dirs, sampling=sampling, crossover=crossover,
                      mutation=mutation, eliminate_duplicates=True)
 
     else:
         raise ValueError("algorithm must be 'nsga2' or 'nsga3'")
 
-    termination = get_termination("n_gen", n_gen)
+    termination = get_termination("n_gen", nsga_config.number_generations)
 
     progress_updater.text = f"Running {alg_name_str} algorithm"
     progress_updater.percentage = 50
@@ -359,7 +364,7 @@ def compute_hypervolume(res, reference_point: tuple[float, float] | None = None)
     return float(hv(F2))
 
 
-def print_best_sequence(scenario: Scenario, res, prefer: str = "sum"):
+def print_best_sequence(scenario: ScenarioCore, res, prefer: str = "sum"):
     """
     Print action keys for one representative solution.
     prefer: 'sum' (min sum of objectives) or 'time' or 'energy'
@@ -397,7 +402,10 @@ def objective_search(row: np.ndarray) -> float:
 def run_nsga(scenario_file_path: Path,
              objective_function: ObjectiveFunction,
              opt_method: OptimizationMethod,
+             nsga_config: NSGAConfig,
              progress_updater = DummyProgressUpdater()) -> OptimizationResult:
+
+    print_with_timestamp(nsga_config.print_str())
 
     if opt_method is OptimizationMethod.OPT_NSGA2:
         algorithm_str = "nsga2"
@@ -407,12 +415,7 @@ def run_nsga(scenario_file_path: Path,
         raise ValueError(f"Unknown optimization method: {opt_method}")
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=scenario_file_path)
-
-    # Fixed-length chromosome
-    max_steps = 200
-    population_size = 80
-    number_generations = 150
+    example_scenario = ScenarioCore(file_path=scenario_file_path)
 
     # Start timer
     start_time = time.time()
@@ -421,64 +424,68 @@ def run_nsga(scenario_file_path: Path,
     result = run_nsga_algorithm(
         scenario=example_scenario,
         algorithm=algorithm_str,
-        seq_len=max_steps,
-        pop_size=population_size,
-        n_gen=number_generations,
-        mut_prob=0.15,
-        penalty=1e4,
+        nsga_config=nsga_config,
         seed=42,
         use_reliability=True,
         verbose=True,
         progress_updater=progress_updater
     )
 
-    prefer = "sum"
+    if result.F is None or not isinstance(result.F, np.ndarray) or result.F.size == 0:
 
-    if prefer == "time":
-        best_idx = int(np.argmin(result.F[:, 0]))
-    elif prefer == "energy":
-        best_idx = int(np.argmin(result.F[:, 1]))
-
-    elif prefer == "objective":
-        values = np.apply_along_axis(objective_search, 1, result.F)
-        best_idx = int(np.argmin(values))
+        print("No solution exists")
+        return None
 
     else:
-        best_idx = int(np.argmin(np.sum(result.F, axis=1)))
 
-    best_seq = result.X[best_idx]
-    total_time = result.F[best_idx][0]
-    total_energy = result.F[best_idx][1]
+        prefer = "sum"
 
-    print_with_timestamp(f"Result of '{algorithm_str}' -> total time: {total_time:.3f}, total energy: {total_energy:.3f}")
+        if prefer == "time":
+            best_idx = int(np.argmin(result.F[:, 0]))
+        elif prefer == "energy":
+            best_idx = int(np.argmin(result.F[:, 1]))
 
-    example_scenario.reset()
+        elif prefer == "objective":
+            values = np.apply_along_axis(objective_search, 1, result.F)
+            best_idx = int(np.argmin(values))
 
-    # Re-simulate to get actual actions taken until done
-    _, _, actions_taken = example_scenario.execute_action_idx_sequence(best_seq)
+        else:
+            best_idx = int(np.argmin(np.sum(result.F, axis=1)))
 
-    hv_nsga = compute_hypervolume(result)
+        best_seq = result.X[best_idx]
+        total_time = result.F[best_idx][0]
+        total_energy = result.F[best_idx][1]
 
-    return OptimizationResult(action_idx_sequence=list(actions_taken),
-                              task_result_list=example_scenario.task_result_history,
-                              total_time=example_scenario.time_sum,
-                              total_energy=example_scenario.energy_sum,
-                              sequence_reliability=example_scenario.sequence_reliability,
-                              objective_function=objective_function,
-                              other_params_dict={"hypervolume": hv_nsga},
-                              total_duration_seconds=(time.time() - start_time),
-                              opt_method=opt_method)
+        print_with_timestamp(f"Result of '{algorithm_str}' -> total time: {total_time:.3f}, total energy: {total_energy:.3f}")
+
+        example_scenario.reset()
+
+        # Re-simulate to get actual actions taken until done
+        _, _, actions_taken = example_scenario.execute_action_idx_sequence(best_seq)
+
+        hv_nsga = compute_hypervolume(result)
+
+        return OptimizationResult(action_idx_sequence=list(actions_taken),
+                                  task_result_list=example_scenario.task_result_history,
+                                  total_time=example_scenario.time_sum,
+                                  total_energy=example_scenario.energy_sum,
+                                  sequence_reliability=example_scenario.sequence_reliability,
+                                  objective_function=objective_function,
+                                  other_params_dict={OPT_RES_PARAM_HYPERVOLUME: hv_nsga},
+                                  total_duration_seconds=(time.time() - start_time),
+                                  opt_method=opt_method)
 
 
 if __name__ == "__main__":
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
+    example_scenario = ScenarioCore(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
-    # Fixed-length chromosome
-    max_steps = 200
-    population_size = 80
-    number_generations = 150
+    example_nsga_config = NSGAConfig(max_sequence_length=200,
+                                     population_size=80,
+                                     number_generations=150,
+                                     mutation_probability=0.15,
+                                     penalty=1e4)
 
     # Start timer for NSGA-II
     nsga2_start_time = time.time()
@@ -487,11 +494,7 @@ if __name__ == "__main__":
     res_nsga2 = run_nsga_algorithm(
         scenario=example_scenario,
         algorithm="nsga2",
-        seq_len=max_steps,
-        pop_size=population_size,
-        n_gen=number_generations,
-        mut_prob=0.15,
-        penalty=1e4,
+        nsga_config=example_nsga_config,
         seed=42,
         use_reliability=True,
         verbose=True
@@ -507,11 +510,7 @@ if __name__ == "__main__":
     res_nsga3 = run_nsga_algorithm(
         scenario=example_scenario,
         algorithm="nsga3",
-        seq_len=max_steps,
-        pop_size=population_size,
-        n_gen=number_generations,
-        mut_prob=0.15,
-        penalty=1e4,
+        nsga_config=example_nsga_config,
         seed=42,
         use_reliability=True,
         verbose=True

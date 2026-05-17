@@ -1,5 +1,6 @@
 {
-  "scenario_name": "Simple Factory",
+  "scenario_name": "Plate B - 1S/2D/2C/2M/1A",
+  "scenario_note": "Reduced Reliability",
   "factory": {
     "storage_machines": [
       {
@@ -178,28 +179,41 @@
     "starting_location": "ST1",
     "target_location": "ST1",
     "params": {
-      "width": 100.0,
-      "height": 100.0
+      "width": 125,
+      "height": 100
     },
     "processing_tasks": [
       {
         "class": "DrillingTask",
+        "name": "DT1",
+        "preconditions": [],
         "params": {
-          "center_x": 2.0,
-          "center_y": 2.0,
-          "radius": 2.0
+          "center_x": 50,
+          "center_y": 50,
+          "radius": 15
         }
       },
       {
         "class": "MillingTask",
+        "name": "MT1",
+        "preconditions": [],
         "params": {
-          "total_area": 5.0
+          "center_x": 0,
+          "center_y": 100,
+          "radius": 20
         }
       },
       {
         "class": "CuttingTask",
+        "name": "CT1",
+        "preconditions": [
+          {"task_name": "DT1"}
+        ],
         "params": {
-          "total_length": 7.0
+          "start_x": 30,
+          "start_y": 0,
+          "end_x": 70,
+          "end_y": 100
         }
       }
     ]

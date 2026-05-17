@@ -1,7 +1,7 @@
 import pytest
 
 from src.arise_project.model.machines import DrillingMachine, CuttingMachine, MillingMachine, ConveyorBelt, \
-    AutomatedGuidedVehicle, ThreeAxesRobot, StorageMachine
+    AutomatedGuidedVehicle, ThreeAxisRobot, StorageMachine
 from src.arise_project.model.tasks import DrillingTask, MillingTask, CuttingTask
 from src.arise_project.model.product import Plate
 from src.arise_project.model.skills import DrillingSkill, MillingSkill, CuttingSkill, TransportSkill, StoreSkill, \
@@ -15,7 +15,7 @@ def test_abbreviations():
     """
 
     class_list = [DrillingMachine, MillingMachine, CuttingMachine,
-                  ConveyorBelt, AutomatedGuidedVehicle, ThreeAxesRobot, StorageMachine,
+                  ConveyorBelt, AutomatedGuidedVehicle, ThreeAxisRobot, StorageMachine,
                   DrillingSkill, MillingSkill, CuttingSkill, TransportSkill, StoreSkill, RetrieveSkill,
                   DrillingTask, MillingTask, CuttingTask,
                   Plate]

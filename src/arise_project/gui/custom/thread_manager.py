@@ -10,7 +10,7 @@ Version: 0.0.3
 import threading
 from typing import Any, Callable
 
-from arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater
+from src.arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater
 
 
 class ThreadManager:

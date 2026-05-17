@@ -37,6 +37,12 @@ class ProductState:
         else:
             raise ValueError("Invalid type for processing task parameter")
 
+        # Store unique IDs for faster reference (for precondition checks)
+        self._processing_tasks_unique_ids = set()
+
+        for task in self._processing_tasks:
+            self._processing_tasks_unique_ids.add(task.unique_id)
+
     def __eq__(self, other) -> bool:
         """
         Allows direct comparison between two states, f.e. to check if the current state matches the target state.
@@ -70,6 +76,10 @@ class ProductState:
         :return: Completed processing tasks (set of ProcessingTask)
         """
         return self._processing_tasks
+
+    @property
+    def processing_tasks_unique_ids(self) -> set[str]:
+        return self._processing_tasks_unique_ids
 
     def get_ordered_processing_task_list(self) -> list[ProcessingTask]:
 
@@ -113,12 +123,7 @@ class ProductState:
         return result_task
 
     def contains_task_with_id(self, unique_id: str) -> bool:
-
-        for task in self._processing_tasks:
-            if task.unique_id == unique_id:
-                return True
-
-        return False
+        return unique_id in self._processing_tasks_unique_ids
 
     def __repr__(self):
 

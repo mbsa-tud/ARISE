@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/action-sequence.schema.json",
+  "title": "Action Sequence Schema",
+  "type": "object",
+  "required": ["action_sequence"],
+  "properties": {
+    "action_sequence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["product_id", "task_id", "skill_id"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "Identifier of the product"
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Identifier of the task"
+          },
+          "skill_id": {
+            "type": "string",
+            "description": "Identifier of the skill"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

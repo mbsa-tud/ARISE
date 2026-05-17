@@ -16,7 +16,7 @@ import hashlib
 
 from pathlib import Path
 
-REMOVE_KEY_LIST_SCENARIO_JSON = ["scenario_name"]
+REMOVE_KEY_LIST_SCENARIO_JSON = ["scenario_name", "scenario_note"]
 REMOVE_KEY_LIST_DQN_CONFIG_JSON = []
 
 
@@ -63,12 +63,12 @@ def get_canonical_hash_dqn_config_json(file_path: Path, char_length: int = 8) ->
                               remove_key_list=REMOVE_KEY_LIST_DQN_CONFIG_JSON)
 
 
-def get_scenario_output_dir_path(scenario_file_path: Path) -> Path:
+def get_scenario_data_dir_path(scenario_file_path: Path) -> Path:
     """
     Calculate canonical hash, create directory name and make directory if it doesn't exist yet.
     """
 
     hash_str = get_canonical_hash_scenario_json(file_path=scenario_file_path)
-    output_dir_path = scenario_file_path.parent / f"{scenario_file_path.stem}_{hash_str}"
+    output_dir_path = scenario_file_path.parent / f"sc_data_{hash_str}"
 
     return output_dir_path

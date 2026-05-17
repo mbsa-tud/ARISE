@@ -10,7 +10,7 @@ Version: 0.0.3
 __author__ = "Patrick Fischer"
 __version__ = "0.0.3"
 
-from arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.objective import ObjectiveFunction
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 
 from src.arise_project.scheduler.factory_dqn_training import run_training, run_inference

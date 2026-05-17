@@ -1,0 +1,175 @@
+# -*- coding: utf-8 -*-
+
+"""
+
+Custom LLM api client for generating responses in plain text and in JSON.
+
+Use of the "Singleton" design pattern to only allow single instances of API clients for prompt requests.
+
+Made use of code from https://github.com/Patrick-Hummel/AI_Simscape_Model_Generator (same author)
+
+Last modification: 20.11.2025
+"""
+
+__version__ = "1"
+__author__ = "Patrick Fischer"
+
+import json
+import sys
+from typing import Tuple
+
+from jsonschema import validate, Draft202012Validator
+from jsonschema.exceptions import ValidationError, SchemaError
+
+from pathlib import Path
+from time import time
+
+from dotenv import load_dotenv
+
+from openai import OpenAI
+
+from src.arise_project.config.paths import DIR_LLM_SCHEDULER_DEFAULT_JSON_SCHEMA_FILE, DIR_LLM_ENV_FILE
+from src.arise_project.scheduler.llm.response import ResponseData
+
+# Load api-keys as environment variables (before other project imports)
+load_dotenv(DIR_LLM_ENV_FILE)
+
+# -- OPENAI --
+OPENAI_GPT41 = "gpt-4.1"
+OPENAI_GPT5 = "gpt-5"
+
+# -- Cost calculation --
+MODEL_PRICES_USD_PER_TOKEN_NOVEMBER_2025_DICT = {
+    OPENAI_GPT41: {"input": 3/1e6, "output": 25/1e6},
+    OPENAI_GPT5: {"input": 1.25/1e6, "output": 10/1e6}
+}
+
+
+class Singleton(type):
+    def __init__(self, name, bases, mmbs):
+        super(Singleton, self).__init__(name, bases, mmbs)
+        self._instance = super(Singleton, self).__call__()
+
+    def __call__(self, *args, **kw):
+        return self._instance
+
+
+class OpenAIGPTClient(metaclass=Singleton):
+
+    def __init__(self):
+        self.client = OpenAI()
+        print("-> OpenAI API client created")
+
+        # Load JSON schema and prepare to be added to function call parameter
+        with open(DIR_LLM_SCHEDULER_DEFAULT_JSON_SCHEMA_FILE, 'r') as file:
+            self.json_response_schema = json.load(file)
+
+        self.json_response_schema.pop('$schema', None)
+
+    def request(self, prompt: str, temperature: float = 1.0, model_name: str = OPENAI_GPT5) -> ResponseData:
+
+        start_time = time()
+
+        response = self.client.responses.create(
+            model=model_name,
+            temperature=temperature,
+            input=prompt
+        )
+
+        response_data = ResponseData(response_str=response.output[0].content[0].text,
+                                     input_tokens=response.usage.input_tokens,
+                                     output_tokens=response.usage.output_tokens,
+                                     time_seconds=time() - start_time,
+                                     model_name=model_name)
+
+        print_token_count_and_cost(response_data)
+
+        return response_data
+
+    def request_json_only_response(self, prompt: str, temperature: float = 1.0, model_name: str = OPENAI_GPT5) -> ResponseData:
+
+        start_time = time()
+
+        response = self.client.responses.create(
+            model=model_name,
+            temperature=temperature,
+            input=[
+                {"role": "system", "content": "Produce output that conforms exactly to the provided JSON schema."},
+                {"role": "user", "content": prompt}
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "task_plan",
+                    "schema": self.json_response_schema,
+                }
+            }
+        )
+
+        response_data = ResponseData(response_str=response.output[1].content[0].text,
+                                     input_tokens=response.usage.input_tokens,
+                                     output_tokens=response.usage.output_tokens,
+                                     time_seconds=time() - start_time,
+                                     model_name=model_name)
+
+        print_token_count_and_cost(response_data)
+
+        data = validate_json_str(json_text=response_data.response_str, schema=self.json_response_schema)
+
+        # TODO Remove - Debugging / Testing
+        print(data)
+
+        return response_data
+
+
+def validate_json_str(json_text: str, schema: dict) -> dict:
+    """
+    Parses a JSON string and validates it against a JSON Schema.
+    Returns the parsed dict if valid; raises ValidationError/SchemaError otherwise.
+    """
+    # Parse JSON text first
+    data = json.loads(json_text)
+
+    # Optional: pre-validate schema itself (useful in dev)
+    Draft202012Validator.check_schema(schema)
+
+    try:
+        # Validate the JSON instance against the schema
+        validate(instance=data, schema=schema)
+
+    except ValidationError as err:
+
+        sys.stderr.write(err.message + "\n")
+
+    except SchemaError as err:
+
+        sys.stderr.write(err.message + "\n")
+
+    return data
+
+
+def token_cost_calculation(input_tokens: int, output_tokens: int, model_name: str) -> Tuple[float, float]:
+
+    if model_name not in MODEL_PRICES_USD_PER_TOKEN_NOVEMBER_2025_DICT:
+        raise ValueError(f"Please define price per input/output token of {model_name}")
+
+    prices = MODEL_PRICES_USD_PER_TOKEN_NOVEMBER_2025_DICT[model_name]
+
+    input_token_cost = input_tokens * prices["input"]
+    output_token_cost = output_tokens * prices["output"]
+
+    return input_token_cost, output_token_cost
+
+
+def print_token_count_and_cost(response_data: ResponseData) -> None:
+
+    # Calculate cost of response
+    input_cost, output_cost = token_cost_calculation(input_tokens=response_data.input_tokens,
+                                                     output_tokens=response_data.output_tokens,
+                                                     model_name=response_data.model_name)
+
+    print(f"\n[MODEL: {response_data.model_name}\n"
+          f"Input tokens: {response_data.input_tokens} -> USD {input_cost:.5f} \n"
+          f"Output tokens: {response_data.output_tokens} -> USD {output_cost:.5f} \n"
+          f"Total = {response_data.input_tokens + response_data.output_tokens} -> USD {input_cost + output_cost:.5f} \n"
+          f"Response time: {response_data.time_seconds:.3f} s]")

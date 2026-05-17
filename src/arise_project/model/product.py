@@ -12,6 +12,10 @@ __version__ = "0.0.2"
 
 from abc import ABC, abstractmethod
 
+import numpy as np
+from PIL.ImageQt import QImage
+
+from src.arise_project.model.tasks import DrillingTask, CuttingTask, MillingTask
 from src.arise_project.model.tasks import ProcessingTask
 from src.arise_project.model.task_results import TaskResult
 from src.arise_project.model.product_state import ProductState
@@ -99,6 +103,10 @@ class Product(ABC):
     def current_state(self) -> ProductState:
         return self._current_state
 
+    @current_state.setter
+    def current_state(self, value: ProductState) -> None:
+        self._current_state = value
+
     @property
     def target_state(self) -> ProductState:
         return self._target_state
@@ -141,6 +149,30 @@ class Product(ABC):
 
         return self._target_state.processing_tasks.difference(self._current_state.processing_tasks)
 
+    def get_remaining_processing_tasks_with_preconditions(self) -> set[ProcessingTask]:
+
+        remaining_processing_tasks = self.get_remaining_processing_tasks()
+        remaining_processing_tasks_with_preconditions = set()
+
+        # Go through all remaining processing tasks
+        for processing_task in remaining_processing_tasks:
+
+            valid_task_flag = True
+
+            # For each remaining processing task go through each precondition (completed tasks)
+            for precondition_task_id in processing_task.precondition_completed_task_id_set:
+
+                # If this precondition has not been fulfilled, exclude this processing task
+                if not self._current_state.contains_task_with_id(precondition_task_id):
+                    valid_task_flag = False
+                    break
+
+            # Otherwise add to set of valid remaining processing tasks
+            if valid_task_flag:
+                remaining_processing_tasks_with_preconditions.add(processing_task)
+
+        return remaining_processing_tasks_with_preconditions
+
     def print_processing_history(self) -> None:
 
         result_str = ""
@@ -158,6 +190,10 @@ class Product(ABC):
 
     def is_done(self) -> bool:
         return self._current_state == self._target_state
+
+    @abstractmethod
+    def render_q_image(self) -> QImage:
+        pass
 
 
 class Plate(Product):
@@ -193,3 +229,79 @@ class Plate(Product):
     @height.setter
     def height(self, value: int):
         self._height = value
+
+    @staticmethod
+    def _create_circle_image(img: np.ndarray, cx: int = 50, cy: int = 50, r: int = 20):
+
+        y, x = np.ogrid[:img.shape[0], :img.shape[1]]
+        mask = (x - cx) ** 2 + (y - cy) ** 2 <= r ** 2
+        img[mask] = 0
+
+        return img
+
+    @staticmethod
+    def _draw_line(img: np.ndarray, x0: int, y0: int, x1: int, y1: int):
+
+        dx = abs(x1 - x0)
+        dy = -abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx + dy
+
+        while True:
+
+            if 0 <= y0 < img.shape[0] and 0 <= x0 < img.shape[1]:
+                img[y0, x0] = 0
+
+            if x0 == x1 and y0 == y1:
+                break
+
+            e2 = 2 * err
+
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
+        return img
+
+    def render_q_image(self) -> QImage:
+
+        img_array = np.ones((self._height, self._width), dtype=np.uint8)
+
+        for processing_task in self._target_state.processing_tasks:
+
+            if isinstance(processing_task, DrillingTask):
+
+                img_array = self._create_circle_image(img=img_array,
+                                                      cx=processing_task.center_x,
+                                                      cy=processing_task.center_y,
+                                                      r=processing_task.radius)
+
+            elif isinstance(processing_task, CuttingTask):
+
+                img_array = self._draw_line(img=img_array,
+                                            x0=processing_task.start_x,
+                                            y0=processing_task.start_y,
+                                            x1=processing_task.end_x,
+                                            y1=processing_task.end_y)
+
+            elif isinstance(processing_task, MillingTask):
+
+                img_array = self._create_circle_image(img=img_array,
+                                                      cx=processing_task.center_x,
+                                                      cy=processing_task.center_y,
+                                                      r=processing_task.radius)
+
+            else:
+
+                raise NotImplementedError(f"Processing task {processing_task} is not implemented.")
+
+        arr8 = (img_array * 180).astype(np.uint8)
+        h, w = arr8.shape
+        qimg = QImage(arr8.data, w, h, w, QImage.Format.Format_Grayscale8)
+        qimg._buffer = arr8  # prevent GC
+
+        return qimg

@@ -15,7 +15,7 @@ import gymnasium as gym
 import numpy as np
 from typing import Any
 
-from src.arise_project.model.scenario import Scenario
+from src.arise_project.model.scenario import ScenarioCore
 from src.arise_project.model.tasks import ProcessingTask
 
 
@@ -23,7 +23,7 @@ class FactoryEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, scenario: Scenario, alpha: float = 1.0, beta: float = 1.0, max_steps: int = 200,
+    def __init__(self, scenario: ScenarioCore, alpha: float = 1.0, beta: float = 1.0, max_steps: int = 200,
                  seed: int = 0, use_reliability: bool = False, output_action_state: bool = False):
 
         super().__init__()
@@ -66,31 +66,31 @@ class FactoryEnv(gym.Env):
         # Initialize features array
         features = np.zeros((len(self.products), self.per_product_dim), dtype=np.float32)
 
-        # Get state of products
-        product_states_dict = self.scenario.get_product_states()
-
-        for product, p_idx in list(self.prod_index.items()):
-
-            if product.unique_id not in product_states_dict:
-                continue
-
-            product_state = product_states_dict[product.unique_id]
-
-            # Get completed tasks and mark them in features array
-            for t in product_state.get_ordered_processing_task_list():
-                if t in self.task_index:
-                    features[p_idx, self.task_index[t]] = 1.0
-
-            # Get current location of product
-            stationary_machine_loc = self.scenario.factory.stationary_machine_by_id_dict[product_state.location_machine_id]
-
-            # Mark machine in features array
-            if stationary_machine_loc in self.stat_mach_index:
-
-                loc_idx = self.stat_mach_index[stationary_machine_loc]
-                features[p_idx, len(self.task_index) + loc_idx] = 1.0
-
-        # Flatten array
+        # # Get state of products
+        # product_states_dict = self.scenario.get_product_states()
+        #
+        # for product, p_idx in list(self.prod_index.items()):
+        #
+        #     if product.unique_id not in product_states_dict:
+        #         continue
+        #
+        #     product_state = product_states_dict[product.unique_id]
+        #
+        #     # Get completed tasks and mark them in features array
+        #     for t in product_state.get_ordered_processing_task_list():
+        #         if t in self.task_index:
+        #             features[p_idx, self.task_index[t]] = 1.0
+        #
+        #     # Get current location of product
+        #     stationary_machine_loc = self.scenario.factory.stationary_machine_by_id_dict[product_state.location_machine_id]
+        #
+        #     # Mark machine in features array
+        #     if stationary_machine_loc in self.stat_mach_index:
+        #
+        #         loc_idx = self.stat_mach_index[stationary_machine_loc]
+        #         features[p_idx, len(self.task_index) + loc_idx] = 1.0
+        #
+        # # Flatten array
         features = features.reshape(-1)
 
         # Create the action mask of all feasible actions in the current state
@@ -156,15 +156,15 @@ class FactoryEnv(gym.Env):
             reward -= 100.0 * (1 - reliability)
 
         if isinstance(task_result.task, ProcessingTask):
-            reward += 75.0
+            reward += 250.0
 
         # Add completion bonus for one product
         if product_done:
-            reward += 300.0
+            reward += 600.0
 
         # Add completion bonus for all products
         if all_products_done:
-            reward += 1000.0
+            reward += 1200.0
 
         next_obs = self._encode_state()
 

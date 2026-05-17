@@ -497,7 +497,7 @@ class AutomatedGuidedVehicle(TransporterMachine):
         super().__init__(name=name, unique_id=unique_id, transport_skill=transport_skill)
 
 
-class ThreeAxesRobot(TransporterMachine):
+class ThreeAxisRobot(TransporterMachine):
 
     # Class instantiation counter for unique id generation
     _unique_id_ctr: int = 0
@@ -506,7 +506,7 @@ class ThreeAxesRobot(TransporterMachine):
     def __init__(self, name: str | None = None, transport_skill: TransportSkill = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
-        unique_id = ThreeAxesRobot._generate_unique_id()
+        unique_id = ThreeAxisRobot._generate_unique_id()
 
         # In case no name is provided, use generated unique id
         if name is None or len(name) == 0:

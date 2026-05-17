@@ -1,0 +1,24 @@
+{
+
+  "action_sequence": [
+
+    {
+      "product_id": "PL01",
+      "task_id": "CT01",
+      "skill_id": "CS01"
+    },
+
+    {
+      "product_id": "PL01",
+      "task_id": "TT01",
+      "skill_id": "TS01"
+    },
+
+    {
+      "product_id": "PL01",
+      "task_id": "MT01",
+      "skill_id": "MS01"
+    }
+  ]
+
+}

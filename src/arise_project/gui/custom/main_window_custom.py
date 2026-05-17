@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from PyQt6 import QtGui
-from PyQt6.QtGui import QBrush, QColor
+from PyQt6.QtGui import QBrush, QColor, QPixmap
 from PyQt6.QtWidgets import QTreeWidgetItem, QGroupBox, QVBoxLayout, QTreeWidget, QTableWidget, QTableWidgetItem, \
     QHeaderView, QFileDialog
 from PyQt6.QtCore import Qt
@@ -29,38 +29,53 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 
 from matplotlib.figure import Figure
 
-from arise_project.gui.custom.pyqt_log_stream import PyQtLogStream
-from arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater
-from arise_project.gui.custom.thread_manager import ThreadManager
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.optimization_result import OptimizationResult
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.scheduler.a_star_search import astar_search
-from arise_project.scheduler.depth_first_search import run_iddfs
-from arise_project.scheduler.factory_dqn_training import run_inference, run_training
-from arise_project.scheduler.genetic_algorithms import run_nsga
-from arise_project.tools.duration_format import duration_formatting
-from arise_project.tools.hash_generation import get_scenario_output_dir_path
-from arise_project.tools.output_timestamp import print_with_timestamp
+from arise_project.model.nsga_config import NSGAConfig
+from src.arise_project.gui.custom.plots import AnalysisPlot
+from src.arise_project.model.product import Plate
+from src.arise_project.config.TEMP_DEBUGMODE import DEBUG_MODE
+from src.arise_project.gui.custom.pyqt_log_stream import PyQtLogStream
+from src.arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater, DummyProgressUpdater
+from src.arise_project.gui.custom.thread_manager import ThreadManager
+from src.arise_project.model.machines import AutomatedGuidedVehicle, ConveyorBelt, ThreeAxisRobot
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.scheduler.a_star_search import astar_search, OPT_RES_PARAM_EXPANSIONS
+from src.arise_project.scheduler.depth_first_search import run_iddfs, OPT_RES_PARAM_MIN_SOLUTION_DEPTH
+from src.arise_project.scheduler.genetic_algorithms import run_nsga, OPT_RES_PARAM_HYPERVOLUME
+
+if not DEBUG_MODE:
+    from src.arise_project.scheduler.factory_dqn_training import run_inference, run_training, OPT_RES_PARAM_REWARD
+
+from src.arise_project.tools.duration_format import duration_formatting
+from src.arise_project.tools.hash_generation import get_scenario_data_dir_path
+from src.arise_project.tools.output_timestamp import print_with_timestamp
 
 from src.arise_project.config.colors import COLOR_BY_SKILL_DICT
-from src.arise_project.config.paths import DIR_DATA_INPUT_SCENARIOS_JSON_PATH, FILE_GUI_ICON_PATH, \
-                                            FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, DIR_NAME_OPT_RESULTS
+from src.arise_project.config.paths import DIR_DATA_INPUT_ALL_SCENARIO_DIRS_PATH, FILE_GUI_ICON_PATH, \
+    FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, DIR_DATA_INPUT_SC_DIR_ANALYSIS_TASK_COUNT
 
 from src.arise_project.gui.generated.main_window_generated import Ui_MainWindow
 
 from src.arise_project.model.machines import StorageMachine, \
-    ProcessingMachine, TransporterMachine
+    ProcessingMachine, TransporterMachine, MillingMachine, CuttingMachine, DrillingMachine
 
 from src.arise_project.model.scenario import Scenario
 
-COL_OPT_RES_COMP_METHOD = "Method"
-COL_OPT_RES_COMP_STEPS = "Steps"
-COL_OPT_RES_COMP_TOTAL_TIME = "Total Time"
-COL_OPT_RES_COMP_TOTAL_ENERGY = "Total Energy"
-COL_OPT_RES_COMP_SEQUENCE_RELIABILITY = "Seq. Reliability"
-COL_OPT_RES_COMP_TOTAL_COST = "Total Cost"
-COL_OPT_RES_COMP_DURATION_SECONDS = "Duration"
+WINDOW_TITLE_BASIS = f"ICM ARISE - Factory Simulation"
+
+COL_SCENARIO_OVERVIEW_NAME = "Name"
+COL_SCENARIO_OVERVIEW_PRODUCTS = "Products"
+COL_SCENARIO_OVERVIEW_TASKS = "PT"
+COL_SCENARIO_OVERVIEW_PROC_SKILLS = "PS"
+COL_SCENARIO_OVERVIEW_MACHINES = "Machines"
+COL_SCENARIO_OVERVIEW_STORAGE_MACHINES = "SM"
+COL_SCENARIO_OVERVIEW_PROCESSING_MACHINES = "PM"
+COL_SCENARIO_OVERVIEW_TRANSPORT_MACHINES = "TM"
+COL_SCENARIO_OVERVIEW_CONNECTIONS = "Connections"
+COL_SCENARIO_OVERVIEW_STATE_COUNT = "States"
+COL_SCENARIO_OVERVIEW_TRANSITION_COUNT = "Transitions"
+COL_SCENARIO_OVERVIEW_ACTION_CATALOG_COUNT = "AC"
 
 COL_SIM_ACTIONS_PRODUCT = "Product"
 COL_SIM_ACTIONS_TASK = "Task"
@@ -72,13 +87,24 @@ COL_SIM_ACTIONS_ENERGY = "Energy"
 COL_SIM_ACTIONS_RELIABILITY = "Reliability"
 COL_SIM_ACTIONS_NOTE = "Note"
 
+COL_OPT_RES_COMP_METHOD = "Method"
+COL_OPT_RES_COMP_STEPS = "Steps"
+COL_OPT_RES_COMP_TOTAL_TIME = "Total Time"
+COL_OPT_RES_COMP_TOTAL_ENERGY = "Total Energy"
+COL_OPT_RES_COMP_SEQUENCE_RELIABILITY = "Seq. Reliability"
+COL_OPT_RES_COMP_TOTAL_COST = "Total Cost"
+COL_OPT_RES_COMP_DURATION_SECONDS = "Duration"
+
 
 class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
 
+        self._window = None
         self._pyqt_log_stream = PyQtLogStream()
+
+        self._active_sc_directory = DIR_DATA_INPUT_SC_DIR_ANALYSIS_TASK_COUNT # DIR_DATA_INPUT_SCENARIOS_JSON_PATH
 
         self._sim_started = False
         self._sim_start_time = time.time()
@@ -89,14 +115,14 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._factory_graph_ax = None
         self._factory_graph_toolbar = None
 
-        self._sim_scenario: Scenario | None = None
-        self._opt_scenario: Scenario | None = None
+        self._loaded_scenario_list: list[Scenario] = []
+        self._active_scenario_idx = 0
+        self._selected_scenario_idx = self._active_scenario_idx
+
         self._current_task_result_list = []
         self._current_action_idx_list = []
         self._selected_task_result = None
         self._selected_action_idx = 0
-
-        self._scenario_file_path = FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
 
         # TODO Refactor / configuration
         use_reliability = True
@@ -117,13 +143,14 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                                                      energy_weight=energy_weight,
                                                      reliability_weight=reliability_weight)
 
-        self._opt_result_dict = {}
-
         self._thread_manager = ThreadManager()
+
 
     def setupUi(self, MainWindow):
 
         super().setupUi(MainWindow)
+
+        self._window = MainWindow
 
         # Set window icon
         MainWindow.setWindowIcon(QtGui.QIcon(str(FILE_GUI_ICON_PATH)))
@@ -133,7 +160,11 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         self.checkBox_factory_show_distances.stateChanged.connect(self.on_change_checkbox_factory_distances)
 
-        self.tableWidget_sim_actions.cellClicked.connect(self.on_cell_selected)
+        self.tableWidget_sim_actions.cellClicked.connect(self.on_cell_selected_sim_actions)
+        self.tableWidget_scenario_overview.cellClicked.connect(self.on_cell_selected_scenario_overview)
+
+        self.pushButton_scenario_overview_reload.clicked.connect(self.on_click_scenario_overview_reload)
+        self.pushButton_scenario_load.clicked.connect(self.on_click_scenario_load)
 
         self.pushButton_sim_execute_action.clicked.connect(self.on_click_sim_execute_action)
         self.pushButton_sim_undo_last_action.clicked.connect(self.on_click_sim_undo_last_action)
@@ -141,24 +172,74 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self.pushButton_sim_save_results.clicked.connect(self.on_click_sim_save_results)
 
         self.pushButton_opt_a_star_run.clicked.connect(self.on_click_opt_a_star_run)
+        self.pushButton_opt_dijkstra_run.clicked.connect(self.on_click_opt_dijkstra_run)
         self.pushButton_opt_dfs_run.clicked.connect(self.on_click_opt_dfs_run)
         self.pushButton_opt_iddfs_run.clicked.connect(self.on_click_opt_iddfs_run)
         self.pushButton_opt_nsga2_run.clicked.connect(self.on_click_opt_nsga2_run)
         self.pushButton_opt_nsga3_run.clicked.connect(self.on_click_opt_nsga3_run)
-        self.pushButton_opt_rl_dqn_training.clicked.connect(self.on_click_opt_rl_dqn_start_training)
-        self.pushButton_opt_rl_dqn_run_inference.clicked.connect(self.on_click_opt_rl_dqn_run_inference)
+        self.pushButton_opt_rl_dqn_run_training_and_inference.clicked.connect(self.on_click_opt_rl_dqn_training_and_inference_run)
+        self.pushButton_opt_llm_agent_run_prompt.clicked.connect(self.on_click_opt_llm_agent_prompt_run)
         self.pushButton_opt_human_sim.clicked.connect(self.on_click_opt_human_sim)
 
-        self.action_load_scenario_from_file.triggered.connect(self.on_action_load_scenario)
+        self.pushButton_opt_auto_run.clicked.connect(self.on_click_opt_auto_run)
+
+        self.action_switch_scenario_directory.triggered.connect(self.on_action_switch_scenario_directory)
         self.action_save_scenario_to_file.triggered.connect(self.on_action_save_scenario)
         self.action_about.triggered.connect(self.on_action_show_about_dialog)
+        self.action_export_analysis.triggered.connect(self.on_action_export_analysis_data)
+
+        self._analysis_plot = AnalysisPlot(self.groupBox_analysis)
+
+        default_nsga_config = NSGAConfig()
+
+        self.spinBox_opt_nsga2_max_sequence_length.setValue(default_nsga_config.max_sequence_length)
+        self.spinBox_opt_nsga2_population.setValue(default_nsga_config.population_size)
+        self.spinBox_opt_nsga2_generations.setValue(default_nsga_config.number_generations)
+        self.doubleSpinBox_opt_nsga2_mutation_probability.setValue(default_nsga_config.mutation_probability * 100)
+
+        self.spinBox_opt_nsga2_max_sequence_length.setValue(default_nsga_config.max_sequence_length)
+        self.spinBox_opt_nsga2_population.setValue(default_nsga_config.population_size)
+        self.spinBox_opt_nsga2_generations.setValue(default_nsga_config.number_generations)
+        self.doubleSpinBox_opt_nsga2_mutation_probability.setValue(default_nsga_config.mutation_probability * 100)
 
         self._init_graph_in_groupbox()
 
+        self._load_all_scenarios(progress_updater=DummyProgressUpdater())
         self._initialize_scenario()
 
     def retranslateUi(self, MainWindow):
         super().retranslateUi(MainWindow)
+
+    def _load_all_scenarios(self, progress_updater: PyQtProgressUpdater) -> None:
+
+        progress_updater.percentage = 0
+        progress_updater.text = ""
+
+        self._loaded_scenario_list: list[Scenario] = []
+        self._active_scenario_idx = 0
+
+        found_scenario_dir_list = list(self._active_sc_directory.iterdir())
+        counter = 0
+
+        for directory_path in found_scenario_dir_list:
+
+            counter += 1
+
+            progress_updater.percentage = int(round(counter / len(found_scenario_dir_list) * 100, 0))
+            progress_updater.text = f"Loading scenario {counter} of {len(found_scenario_dir_list)}"
+
+            if not directory_path.is_dir():
+                continue
+
+            scenario_file_path = directory_path / f"{directory_path.name}.json"
+
+            if scenario_file_path.exists():
+                scenario = Scenario(file_path=scenario_file_path, reset_class=True)
+                self._loaded_scenario_list.append(scenario)
+
+        progress_updater.percentage = 100
+        progress_updater.text = "Done."
+        progress_updater.finish()
 
     def _initialize_scenario(self):
 
@@ -168,30 +249,12 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._sim_start_time = time.time()
         self._sim_action_idx_sequence = []
 
-        self._sim_scenario: Scenario | None = None
-        self._opt_scenario: Scenario | None = None
         self._current_task_result_list = []
         self._current_action_idx_list = []
         self._selected_task_result = None
         self._selected_action_idx = 0
 
-        self._opt_result_dict = {}
-
         self._thread_manager = ThreadManager()
-
-        # Get scenario output directory path (based on hash value of scenario JSON file)
-        self._scenario_output_dir_path = get_scenario_output_dir_path(scenario_file_path=self._scenario_file_path)
-        self._scenario_output_dir_path.mkdir(parents=True, exist_ok=True)
-
-        self._scenario_output_opt_result_dir_path = self._scenario_output_dir_path / DIR_NAME_OPT_RESULTS
-        self._scenario_output_dir_path.mkdir(parents=True, exist_ok=True)
-
-        # Load a scenario (product and factory)
-        self._sim_scenario = Scenario(file_path=self._scenario_file_path, reset_class=True)
-        print_with_timestamp(f"Loaded scenario for simulation: '{self._scenario_file_path.name}'")
-
-        self._opt_scenario = Scenario(file_path=self._scenario_file_path, reset_class=True)
-        print_with_timestamp(f"Loaded scenario for optimization: '{self._scenario_file_path.name}'")
 
         # Reset GUI
         for opt_method in OptimizationMethod:
@@ -217,21 +280,53 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._update_tree_widget_state()
         self._update_table_widget_sim_actions()
 
-        self.label_sim_total_steps.setText(f"{self._sim_scenario.step_count}")
-        self.label_sim_total_time.setText(f"{self._sim_scenario.time_sum:.2f}")
-        self.label_sim_total_energy.setText(f"{self._sim_scenario.energy_sum:.2f}")
-        self.label_sim_sequence_reliability.setText(f"{self._sim_scenario.sequence_reliability:.3f}")
-        self.label_sim_total_cost.setText(f"{self._sim_scenario.calculate_total_cost(self._objective_function):.2f}")
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
-        self._draw_graph_in_groupbox(self._sim_scenario.factory.create_digraph_stationary_machines(),
+        self._window.setWindowTitle(f"{WINDOW_TITLE_BASIS} - Scenario: {active_scenario.name}")
+
+        self.label_sim_total_steps.setText(f"{active_scenario.step_count}")
+        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f}")
+        self.label_sim_total_energy.setText(f"{active_scenario.energy_sum:.2f}")
+        self.label_sim_sequence_reliability.setText(f"{active_scenario.sequence_reliability:.3f}")
+        self.label_sim_total_cost.setText(f"{active_scenario.calculate_total_cost(self._objective_function):.2f}")
+
+        self._draw_graph_in_groupbox(active_scenario.factory.create_digraph_stationary_machines(),
                                      labels=True,
                                      edge_labels=self.checkBox_factory_show_distances.isChecked(),
                                      node_size=800)
 
+        for opt_method in active_scenario.opt_result_dict:
+
+            if isinstance(active_scenario.opt_result_dict[opt_method], OptimizationResult):
+
+                match opt_method:
+
+                    case OptimizationMethod.OPT_A_STAR:
+                        self._on_a_star_complete()
+                    case OptimizationMethod.OPT_DIJKSTRA:
+                        self._on_dijkstra_complete()
+                    case OptimizationMethod.OPT_DFS:
+                        self._on_dfs_complete()
+                    case OptimizationMethod.OPT_IDDFS:
+                        self._on_iddfs_complete()
+                    case OptimizationMethod.OPT_NSGA2:
+                        self._on_nsga2_complete()
+                    case OptimizationMethod.OPT_NSGA3:
+                        self._on_nsga3_complete()
+                    case OptimizationMethod.OPT_RL_DQN:
+                        self._on_rl_dqn_training_and_inference_complete()
+                    case OptimizationMethod.OPT_LLM_AGENT:
+                        self._on_llm_agent_prompt_complete()
+                    case OptimizationMethod.OPT_HUMAN:
+                        self._update_opt_result(OptimizationMethod.OPT_HUMAN)
+
         self._update_table_widget_opt_comparison()
+        self._update_product_image()
+        self._update_table_widget_scenario_overview()
 
-        self._load_opt_results()
+        self._update_analysis_plots()
 
+        print_with_timestamp(f"Initialization of '{active_scenario.name}' complete...")
 
     def _on_log_stream_message(self, msg_str: str):
         self.plainTextEdit_log_output.moveCursor(QtGui.QTextCursor.MoveOperation.End)
@@ -314,33 +409,26 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._factory_graph_fig.tight_layout()
         self._factory_graph_canvas.draw_idle()
 
-    def _load_opt_results(self):
+    def _update_product_image(self) -> None:
 
-        for opt_method in OptimizationMethod:
+        display_product = self._loaded_scenario_list[self._active_scenario_idx].get_sorted_product_list()[0]
 
-            opt_result = OptimizationResult.pickle_load(scenario_dir=self._scenario_output_opt_result_dir_path,
-                                                        opt_method=opt_method)
+        qimg = display_product.render_q_image()
+        pix = QPixmap.fromImage(qimg)
 
-            if not opt_result is None:
+        if isinstance(display_product, Plate):
 
-                self._opt_result_dict[opt_method] = opt_result
+            scaled_width = int(display_product.width * 4)
+            scaled_height = int(display_product.height * 4)
 
-                match opt_method:
+            # 🔍 Scale while keeping sharp pixels
+            pix_scaled = pix.scaled(scaled_width, scaled_height, Qt.AspectRatioMode.KeepAspectRatio,
+                                    Qt.TransformationMode.FastTransformation)
 
-                    case OptimizationMethod.OPT_A_STAR:
-                        self._on_a_star_complete()
-                    case OptimizationMethod.OPT_DFS:
-                        self._on_dfs_complete()
-                    case OptimizationMethod.OPT_IDDFS:
-                        self._on_iddfs_complete()
-                    case OptimizationMethod.OPT_NSGA2:
-                        self._on_nsga2_complete()
-                    case OptimizationMethod.OPT_NSGA3:
-                        self._on_nsga3_complete()
-                    case OptimizationMethod.OPT_RL_DQN:
-                        self._on_rl_dqn_complete()
-                    case OptimizationMethod.OPT_HUMAN:
-                        self._update_opt_result(OptimizationMethod.OPT_HUMAN)
+            self.label_product_image.setPixmap(pix_scaled)
+
+        else:
+            raise NotImplementedError(f"Product image rendering for type '{type(display_product)}' is not implemented.")
 
     def _update_tree_widget_factory(self) -> None:
         """
@@ -362,9 +450,11 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         transporter_machine_child_item.setText(0, "Transporter Machine")
         transporter_machine_child_item.setExpanded(True)
 
-        for machine_key in self._sim_scenario.factory.machine_by_id_dict.keys():
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
-            machine = self._sim_scenario.factory.machine_by_id_dict[machine_key]
+        for machine_key in active_scenario.factory.machine_by_id_dict.keys():
+
+            machine = active_scenario.factory.machine_by_id_dict[machine_key]
 
             if isinstance(machine, ProcessingMachine):
                 machine_child_item = QTreeWidgetItem(proc_machine_child_item)
@@ -412,7 +502,9 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         :return: None
         """
 
-        first_product = self._sim_scenario.get_sorted_product_list()[0]
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        first_product = active_scenario.get_sorted_product_list()[0]
 
         self.treeWidget_product.clear()
 
@@ -426,7 +518,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         specific_product_child_item.setExpanded(True)
 
         count_child_item = QTreeWidgetItem(specific_product_child_item)
-        count_child_item.setText(0, f"Count: {len(self._sim_scenario.get_sorted_product_list())}")
+        count_child_item.setText(0, f"Count: {len(active_scenario.get_sorted_product_list())}")
 
         params_child_item = QTreeWidgetItem(specific_product_child_item)
         params_child_item.setText(0, "Params")
@@ -446,6 +538,13 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             processing_task_child_item = QTreeWidgetItem(processing_tasks_child_item)
             processing_task_child_item.setText(0, f"{processing_task.unique_id} [{type(processing_task).__name__}]")
 
+            processing_task_preconditions_child_item = QTreeWidgetItem(processing_task_child_item)
+            processing_task_preconditions_child_item.setText(0, "Preconditions")
+
+            for precondition_task_id in processing_task.precondition_completed_task_id_set:
+                processing_task_precondition_child_item = QTreeWidgetItem(processing_task_preconditions_child_item)
+                processing_task_precondition_child_item.setText(0, f"Task: {precondition_task_id}")
+
             processing_task_params_child_item = QTreeWidgetItem(processing_task_child_item)
             processing_task_params_child_item.setText(0, "Params")
 
@@ -453,7 +552,13 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
             for param_key in params_dict.keys():
                 processing_task_param_child_item = QTreeWidgetItem(processing_task_params_child_item)
-                processing_task_param_child_item.setText(0, f"{param_key}: {params_dict[param_key]}")
+
+                param_value_str = str(params_dict[param_key])
+
+                if isinstance(params_dict[param_key], float):
+                    param_value_str = f"{params_dict[param_key]:.2f}"
+
+                processing_task_param_child_item.setText(0, f"{param_key}: {param_value_str}")
 
             skills_child_item = QTreeWidgetItem(processing_task_child_item)
             skills_child_item.setText(0, "Skills")
@@ -464,13 +569,15 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def _update_tree_widget_state(self) -> None:
 
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
         self.treeWidget_sim_states.clear()
 
         product_child_item = QTreeWidgetItem(self.treeWidget_sim_states)
         product_child_item.setText(0, "Product State")
         product_child_item.setExpanded(True)
 
-        for product in self._sim_scenario.get_sorted_product_list():
+        for product in active_scenario.get_sorted_product_list():
 
             specific_product_machine_child_item = QTreeWidgetItem(product_child_item)
             specific_product_machine_child_item.setText(0, f"{product.unique_id} "
@@ -527,9 +634,9 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         action_history_child_item.setText(0, "Action History")
         action_history_child_item.setExpanded(True)
 
-        if len(self._sim_scenario.task_result_history) > 0:
+        if len(active_scenario.task_result_history) > 0:
 
-            for idx, task_result in enumerate(self._sim_scenario.task_result_history):
+            for idx, task_result in enumerate(active_scenario.task_result_history):
 
                 specific_action_child_item = QTreeWidgetItem(action_history_child_item)
                 specific_action_child_item.setText(0, f"{idx + 1}. {task_result.get_short_name(with_product=True, with_machine=True)}")
@@ -554,8 +661,10 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         :return: None
         """
 
-        self._current_task_result_list = self._sim_scenario.get_actions()
-        self._current_action_idx_list = self._sim_scenario.get_feasible_actions_idx_list()
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        self._current_task_result_list = active_scenario.get_actions()
+        self._current_action_idx_list = active_scenario.get_feasible_actions_idx_list()
 
         action_data_dict = [{COL_SIM_ACTIONS_PRODUCT: task_result.product.unique_id,
                              COL_SIM_ACTIONS_TASK: task_result.task.unique_id,
@@ -631,6 +740,9 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             case OptimizationMethod.OPT_A_STAR:
                 table_widget = self.tableWidget_opt_a_star_results
 
+            case OptimizationMethod.OPT_DIJKSTRA:
+                table_widget = self.tableWidget_opt_dijkstra_results
+
             case OptimizationMethod.OPT_DFS:
                 table_widget = self.tableWidget_opt_dfs_results
 
@@ -646,13 +758,18 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             case OptimizationMethod.OPT_RL_DQN:
                 table_widget = self.tableWidget_opt_rl_dqn_results
 
+            case OptimizationMethod.OPT_LLM_AGENT:
+                table_widget = self.tableWidget_opt_llm_agent_results
+
             case OptimizationMethod.OPT_HUMAN:
                 table_widget = self.tableWidget_opt_human_results
 
             case _:
                 raise NotImplementedError(f"Optimization method {opt_method} not implemented")
 
-        opt_res = self._opt_result_dict[opt_method]
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_res = active_scenario.opt_result_dict[opt_method]
         opt_res_df = opt_res.to_dataframe()
 
         table_widget.clear()
@@ -695,6 +812,15 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 label_total_cost = self.label_opt_a_star_total_cost
                 label_total_duration = self.label_opt_a_star_total_duration
                 label_total_timestamp = self.label_opt_a_star_timestamp
+
+            case OptimizationMethod.OPT_DIJKSTRA:
+                label_total_steps = self.label_opt_dijkstra_total_steps
+                label_total_time = self.label_opt_dijkstra_total_time
+                label_total_energy = self.label_opt_dijkstra_total_energy
+                label_total_reliability = self.label_opt_dijkstra_sequence_reliability
+                label_total_cost = self.label_opt_dijkstra_total_cost
+                label_total_duration = self.label_opt_dijkstra_total_duration
+                label_total_timestamp = self.label_opt_dijkstra_timestamp
 
             case OptimizationMethod.OPT_DFS:
                 label_total_steps = self.label_opt_dfs_total_steps
@@ -741,6 +867,15 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 label_total_duration = self.label_opt_rl_dqn_total_duration
                 label_total_timestamp = self.label_opt_rl_dqn_timestamp
 
+            case OptimizationMethod.OPT_LLM_AGENT:
+                label_total_steps = self.label_opt_llm_agent_total_steps
+                label_total_time = self.label_opt_llm_agent_total_time
+                label_total_energy = self.label_opt_llm_agent_total_energy
+                label_total_reliability = self.label_opt_llm_agent_sequence_reliability
+                label_total_cost = self.label_opt_llm_agent_total_cost
+                label_total_duration = self.label_opt_llm_agent_total_duration
+                label_total_timestamp = self.label_opt_llm_agent_timestamp
+
             case OptimizationMethod.OPT_HUMAN:
                 label_total_steps = self.label_opt_human_total_steps
                 label_total_time = self.label_opt_human_total_time
@@ -763,26 +898,90 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             label_total_duration.setText(f"0min 0s")
             label_total_timestamp.setText("")
 
+            match opt_method:
+
+                case OptimizationMethod.OPT_A_STAR:
+                    self.label_opt_a_star_expansions.setText("-")
+
+                case OptimizationMethod.OPT_DIJKSTRA:
+                    self.label_opt_dijkstra_expansions.setText("-")
+
+                case OptimizationMethod.OPT_DFS:
+                    self.label_opt_dfs_min_solution_depth.setText("-")
+
+                case OptimizationMethod.OPT_IDDFS:
+                    self.label_opt_iddfs_min_solution_depth.setText("-")
+
+                case OptimizationMethod.OPT_NSGA2:
+                    self.label_opt_nsga2_hypervolume.setText("-")
+
+                case OptimizationMethod.OPT_NSGA3:
+                    self.label_opt_nsga3_hypervolume.setText("-")
+
+                case OptimizationMethod.OPT_RL_DQN:
+                    self.label_opt_rl_dqn_reward.setText("-")
+
+                case OptimizationMethod.OPT_LLM_AGENT:
+                    self.label_opt_llm_agent_tokens.setText("-")
+
         else:
 
-            label_total_steps.setText(f"{self._opt_result_dict[opt_method].steps}")
-            label_total_time.setText(f"{self._opt_result_dict[opt_method].total_time:.2f}")
-            label_total_energy.setText(f"{self._opt_result_dict[opt_method].total_energy:.2f}")
-            label_total_reliability.setText(f"{self._opt_result_dict[opt_method].sequence_reliability:.3f}")
-            label_total_cost.setText(f"{self._opt_result_dict[opt_method].total_cost:.2f}")
-            label_total_duration.setText(f"{duration_formatting(self._opt_result_dict[opt_method].total_duration_seconds)}")
-            label_total_timestamp.setText(self._opt_result_dict[opt_method].get_timestamp_str())
+            active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+            label_total_steps.setText(f"{active_scenario.opt_result_dict[opt_method].steps}")
+            label_total_time.setText(f"{active_scenario.opt_result_dict[opt_method].total_time:.2f}")
+            label_total_energy.setText(f"{active_scenario.opt_result_dict[opt_method].total_energy:.2f}")
+            label_total_reliability.setText(f"{active_scenario.opt_result_dict[opt_method].sequence_reliability:.3f}")
+            label_total_cost.setText(f"{active_scenario.opt_result_dict[opt_method].total_cost:.2f}")
+            label_total_duration.setText(f"{duration_formatting(active_scenario.opt_result_dict[opt_method].total_duration_seconds)}")
+            label_total_timestamp.setText(active_scenario.opt_result_dict[opt_method].get_timestamp_str())
+
+            match opt_method:
+
+                case OptimizationMethod.OPT_A_STAR:
+                    expansions_count = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_EXPANSIONS]
+                    self.label_opt_a_star_expansions.setText(f"{expansions_count}")
+
+                case OptimizationMethod.OPT_DIJKSTRA:
+                    expansions_count = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_EXPANSIONS]
+                    self.label_opt_dijkstra_expansions.setText(f"{expansions_count}")
+
+                case OptimizationMethod.OPT_DFS:
+                    min_solution_depth = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_MIN_SOLUTION_DEPTH]
+                    self.label_opt_dfs_min_solution_depth.setText(f"{min_solution_depth}")
+
+                case OptimizationMethod.OPT_IDDFS:
+                    min_solution_depth = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_MIN_SOLUTION_DEPTH]
+                    self.label_opt_iddfs_min_solution_depth.setText(f"{min_solution_depth}")
+
+                case OptimizationMethod.OPT_NSGA2:
+                    hypervolume = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_HYPERVOLUME]
+                    self.label_opt_nsga2_hypervolume.setText(f"{hypervolume:.3f}")
+
+                case OptimizationMethod.OPT_NSGA3:
+                    hypervolume = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_HYPERVOLUME]
+                    self.label_opt_nsga3_hypervolume.setText(f"{hypervolume:.3f}")
+
+                case OptimizationMethod.OPT_RL_DQN:
+                    reward = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_REWARD]
+                    self.label_opt_rl_dqn_reward.setText(f"{reward:.3f}")
+
+                case OptimizationMethod.OPT_LLM_AGENT:
+                    tokens = -1 #active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_TOKENS]
+                    self.label_opt_rl_dqn_reward.setText(f"{tokens}")
 
 
     def _update_table_widget_opt_comparison(self) -> None:
 
-        if len(self._opt_result_dict) == 0:
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        if len(active_scenario.opt_result_dict) == 0:
             return
 
         # Generate comparison dataframe
         opt_result_comp_data_dict_list = []
 
-        for opt_result in self._opt_result_dict.values():
+        for opt_result in active_scenario.opt_result_dict.values():
 
             if not isinstance(opt_result, OptimizationResult):
                 continue
@@ -816,16 +1015,26 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         max_value_seq_rel_indices = opt_comp_df.index[opt_comp_df[COL_OPT_RES_COMP_SEQUENCE_RELIABILITY] ==
                                                       opt_comp_df[COL_OPT_RES_COMP_SEQUENCE_RELIABILITY].max()].tolist()
 
-        most_recent_result_opt_method = list(self._opt_result_dict.keys())[0]
-        most_recent_result_datetime = self._opt_result_dict[most_recent_result_opt_method].timestamp_dt
+        most_recent_result_opt_method = list(active_scenario.opt_result_dict.keys())[0]
+        most_recent_opt_result = active_scenario.opt_result_dict[most_recent_result_opt_method]
 
-        for opt_method in self._opt_result_dict.keys():
+        if most_recent_opt_result is None:
+            return
 
-            if self._opt_result_dict[opt_method].timestamp_dt > most_recent_result_datetime:
-                most_recent_result_datetime = self._opt_result_dict[opt_method].timestamp_dt
+        most_recent_result_datetime = most_recent_opt_result.timestamp_dt
+
+        for opt_method in active_scenario.opt_result_dict.keys():
+
+            opt_result = active_scenario.opt_result_dict[opt_method]
+
+            if opt_result is None:
+                continue
+
+            if opt_result.timestamp_dt > most_recent_result_datetime:
+                most_recent_result_datetime = opt_result.timestamp_dt
                 most_recent_result_opt_method = opt_method
 
-        self.label_opt_comparison_timestamp.setText(self._opt_result_dict[most_recent_result_opt_method].get_timestamp_str())
+        self.label_opt_comparison_timestamp.setText(active_scenario.opt_result_dict[most_recent_result_opt_method].get_timestamp_str())
 
         # Fill table with content
         self.tableWidget_opt_comparison.clear()
@@ -889,16 +1098,122 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         font.setBold(True)
         header.setFont(font)
 
+    def _update_table_widget_scenario_overview(self) -> None:
+
+        scenario_overview_dict_list = []
+
+        for scenario in self._loaded_scenario_list:
+
+            product_count = len(scenario.product_by_id_dict)
+            task_count = len(scenario.get_sorted_product_list()[0].target_state.processing_tasks)
+            skill_count = scenario.factory.get_total_processing_skill_count()
+            processing_machine_count = len(scenario.factory.processing_machine_by_id_dict)
+            transport_machine_count = len(scenario.factory.transport_machine_by_id_dict)
+            storage_machine_count = len(scenario.factory.storage_machine_by_id_dict)
+            machine_count = len(scenario.factory.machine_by_id_dict)
+            connections_count = len(scenario.factory.transport_connections)
+            action_catalog_count = len(scenario.sorted_action_catalog)
+
+            scenario_overview_dict = {COL_SCENARIO_OVERVIEW_NAME: scenario.name,
+                                      COL_SCENARIO_OVERVIEW_PRODUCTS: product_count,
+                                      COL_SCENARIO_OVERVIEW_TASKS: task_count,
+                                      COL_SCENARIO_OVERVIEW_PROC_SKILLS: skill_count,
+                                      COL_SCENARIO_OVERVIEW_PROCESSING_MACHINES: processing_machine_count,
+                                      COL_SCENARIO_OVERVIEW_TRANSPORT_MACHINES: transport_machine_count,
+                                      COL_SCENARIO_OVERVIEW_STORAGE_MACHINES: storage_machine_count,
+                                      COL_SCENARIO_OVERVIEW_MACHINES: machine_count,
+                                      COL_SCENARIO_OVERVIEW_CONNECTIONS: connections_count,
+                                      COL_SCENARIO_OVERVIEW_ACTION_CATALOG_COUNT: action_catalog_count,
+                                      }
+
+            # Only show this data if specifically requested as it may take some time to calculate
+            if self.checkBox_scenario_overview_show_states_transitions.isChecked():
+
+                state_count = scenario.calculate_total_state_count()
+                transition_count = scenario.calculate_total_transition_count()
+
+                scenario_overview_dict[COL_SCENARIO_OVERVIEW_STATE_COUNT] = state_count
+                scenario_overview_dict[COL_SCENARIO_OVERVIEW_TRANSITION_COUNT] = transition_count
+
+            scenario_overview_dict_list.append(scenario_overview_dict)
+
+        if len(scenario_overview_dict_list) == 0:
+            return
+
+        scenario_overview_df = pd.DataFrame(data=scenario_overview_dict_list)
+
+        # Fill table with content
+        self.tableWidget_scenario_overview.clear()
+
+        # Reset sorting after update
+        self.tableWidget_scenario_overview.setSortingEnabled(False)
+        self.tableWidget_scenario_overview.setSortingEnabled(True)
+        self.tableWidget_scenario_overview.horizontalHeader().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
+
+        self.tableWidget_scenario_overview.setRowCount(len(scenario_overview_df))
+        self.tableWidget_scenario_overview.setColumnCount(len(scenario_overview_df.columns))
+        self.tableWidget_scenario_overview.setHorizontalHeaderLabels(scenario_overview_df.columns.tolist())
+        self.tableWidget_scenario_overview.setVerticalHeaderLabels([str(i) for i in scenario_overview_df.index])
+
+        for row in range(len(scenario_overview_df)):
+
+            for col in range(len(scenario_overview_df.columns)):
+
+                item = QTableWidgetItem()
+
+                # Set data for sorting
+                item.setData(Qt.ItemDataRole.DisplayRole, scenario_overview_df.iat[row, col])
+
+                # Center text
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                self.tableWidget_scenario_overview.setItem(row, col, item)
+
+        header = self.tableWidget_scenario_overview.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # Make text in header bold
+        font = header.font()
+        font.setBold(True)
+        header.setFont(font)
+
+        self._update_labels_scenario_overview_details()
+
+    def _update_labels_scenario_overview_details(self) -> None:
+
+        selected_scenario = self._loaded_scenario_list[self._selected_scenario_idx]
+
+        self.label_scenario_details_name.setText(selected_scenario.name)
+        self.label_scenario_details_note.setText(selected_scenario.note)
+        self.label_scenario_details_file_name.setText(selected_scenario.file_path.name)
+        self.label_scenario_details_modified.setText(selected_scenario.last_modified_dt.strftime('%d.%m.%Y %H:%M:%S'))
+
+        milling_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(MillingMachine)))
+        cutting_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(CuttingMachine)))
+        drilling_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(DrillingMachine)))
+        agv_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(AutomatedGuidedVehicle)))
+        cb_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(ConveyorBelt)))
+        tar_machine_count = str(len(selected_scenario.factory.get_machines_by_machine_type(ThreeAxisRobot)))
+
+        self.label_scenario_details_milling_machines.setText(milling_machine_count)
+        self.label_scenario_details_cutting_machines.setText(cutting_machine_count)
+        self.label_scenario_details_drilling_machines.setText(drilling_machine_count)
+        self.label_scenario_details_agvs.setText(agv_machine_count)
+        self.label_scenario_details_conveyor_belts.setText(cb_machine_count)
+        self.label_scenario_details_three_axis_robots.setText(tar_machine_count)
+
     def _update_opt_result(self, opt_method: OptimizationMethod):
 
-        if self._opt_result_dict[opt_method] is None:
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        if active_scenario.opt_result_dict[opt_method] is None:
             return
 
         # Save results as pickle file
-        self._opt_result_dict[opt_method].pickle_dump(output_directory=self._scenario_output_opt_result_dir_path)
+        active_scenario.opt_result_dict[opt_method].pickle_dump(output_directory=active_scenario.opt_result_dir_path)
 
         # Save exemplary task results as CSV
-        self._opt_result_dict[opt_method].to_csv(output_directory=self._scenario_output_opt_result_dir_path)
+        active_scenario.opt_result_dict[opt_method].to_csv(output_directory=active_scenario.opt_result_dir_path)
 
         # Update table with exemplary task results
         self._update_table_widget_opt_results(opt_method)
@@ -911,13 +1226,15 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def _update_sim_all(self):
 
-        self.label_sim_total_steps.setText(f"{self._sim_scenario.step_count}")
-        self.label_sim_total_time.setText(f"{self._sim_scenario.time_sum:.2f}")
-        self.label_sim_total_energy.setText(f"{self._sim_scenario.energy_sum:.2f}")
-        self.label_sim_sequence_reliability.setText(f"{self._sim_scenario.sequence_reliability:.3f}")
-        self.label_sim_total_cost.setText(f"{self._sim_scenario.calculate_total_cost(self._objective_function):.2f}")
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
-        if self._sim_scenario.is_done():
+        self.label_sim_total_steps.setText(f"{active_scenario.step_count}")
+        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f}")
+        self.label_sim_total_energy.setText(f"{active_scenario.energy_sum:.2f}")
+        self.label_sim_sequence_reliability.setText(f"{active_scenario.sequence_reliability:.3f}")
+        self.label_sim_total_cost.setText(f"{active_scenario.calculate_total_cost(self._objective_function):.2f}")
+
+        if active_scenario.is_done():
             self.label_sim_is_done.setText("True")
             self.label_sim_is_done.setStyleSheet("color: forestgreen;")
             self.pushButton_sim_save_results.setEnabled(True)
@@ -929,20 +1246,66 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._update_table_widget_sim_actions()
         self._update_tree_widget_state()
 
+    def _update_analysis_plots(self) -> None:
+
+        test_opt_res_dict_list = []
+
+        for loaded_scenario in self._loaded_scenario_list:
+
+            if OptimizationMethod.OPT_A_STAR in loaded_scenario.opt_result_dict.keys():
+
+                opt_res = loaded_scenario.opt_result_dict[OptimizationMethod.OPT_A_STAR]
+
+                if isinstance(opt_res, OptimizationResult):
+
+                    test_opt_res_dict = {"NAME": loaded_scenario.name,
+                                         "ASTAR": opt_res.total_duration_seconds}
+
+                    test_opt_res_dict_list.append(test_opt_res_dict)
+
+        if len(test_opt_res_dict_list) == 0:
+            return
+
+        test_analysis_df = pd.DataFrame(data=test_opt_res_dict_list)
+        self._analysis_plot .update_plot(test_analysis_df, "ASTAR")
+
     def on_change_checkbox_factory_distances(self):
 
-        self._draw_graph_in_groupbox(self._sim_scenario.factory.create_digraph_stationary_machines(),
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        self._draw_graph_in_groupbox(active_scenario.factory.create_digraph_stationary_machines(),
                                      labels=True,
                                      edge_labels=self.checkBox_factory_show_distances.isChecked(),
                                      node_size=800)
 
-    def on_cell_selected(self, row_selected, column_selected):
+    def on_cell_selected_sim_actions(self, row_selected, column_selected):
         self._selected_task_result = self._current_task_result_list[row_selected]
         self._selected_action_idx = self._current_action_idx_list[row_selected]
         self.label_sim_selected_action.setText(str(self._selected_task_result.get_short_name(with_product=True, with_machine=True)))
         self.pushButton_sim_execute_action.setEnabled(True)
 
+    def on_cell_selected_scenario_overview(self, row_selected, column_selected):
+        self._selected_scenario_idx = row_selected
+        self._update_labels_scenario_overview_details()
+
+    def on_click_scenario_overview_reload(self):
+
+        progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_reload_all_scenarios_complete)
+
+        self._thread_manager.run_thread(self._load_all_scenarios, progress_updater=progress_updater,
+                                        additional_kwargs=dict())
+
+        self.pushButton_scenario_overview_reload.setEnabled(False)
+
+    def on_click_scenario_load(self):
+        self._active_scenario_idx = self._selected_scenario_idx
+        self._initialize_scenario()
+
     def on_click_sim_execute_action(self):
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
         if not self._sim_started:
 
@@ -952,7 +1315,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             self.pushButton_sim_undo_last_action.setEnabled(True)
 
         self._sim_action_idx_sequence.append(self._selected_action_idx)
-        self._sim_scenario.execute_action(self._selected_task_result)
+        active_scenario.execute_action(self._selected_task_result)
 
         self.pushButton_sim_execute_action.setEnabled(False)
 
@@ -960,20 +1323,24 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def on_click_sim_undo_last_action(self):
 
-        self._sim_scenario.undo_last_action()
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        active_scenario.undo_last_action()
 
         # TODO move action idx sequence to Scenario
         if len(self._sim_action_idx_sequence) > 0:
             self._sim_action_idx_sequence.pop(-1)
 
-        if len(self._sim_scenario.task_result_history) == 0:
+        if len(active_scenario.task_result_history) == 0:
             self.pushButton_sim_undo_last_action.setEnabled(False)
 
         self._update_sim_all()
 
     def on_click_sim_reset_scenario(self):
 
-        self._sim_scenario.reset()
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        active_scenario.reset()
 
         self._sim_started = False
         self._sim_start_time = time.time()
@@ -986,20 +1353,22 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def on_click_sim_save_results(self):
 
-        if self._sim_scenario.is_done():
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        if active_scenario.is_done():
 
 
             opt_result = OptimizationResult(action_idx_sequence=list(self._sim_action_idx_sequence),
-                                            task_result_list=self._sim_scenario.task_result_history,
-                                            total_time=self._sim_scenario.time_sum,
-                                            total_energy=self._sim_scenario.energy_sum,
-                                            sequence_reliability=self._sim_scenario.sequence_reliability,
+                                            task_result_list=active_scenario.task_result_history,
+                                            total_time=active_scenario.time_sum,
+                                            total_energy=active_scenario.energy_sum,
+                                            sequence_reliability=active_scenario.sequence_reliability,
                                             objective_function=self._objective_function,
                                             other_params_dict={},
                                             total_duration_seconds=(time.time() - self._sim_start_time),
                                             opt_method=OptimizationMethod.OPT_HUMAN)
 
-            self._opt_result_dict[OptimizationMethod.OPT_HUMAN] = opt_result
+            active_scenario.opt_result_dict[OptimizationMethod.OPT_HUMAN] = opt_result
 
             self._update_opt_result(OptimizationMethod.OPT_HUMAN)
 
@@ -1017,8 +1386,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
     def on_click_opt_a_star_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_a_star_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_a_star_complete)
 
         self._thread_manager.run_thread(self.run_a_star_search, progress_updater=progress_updater,
                                         additional_kwargs=dict())
@@ -1026,11 +1395,22 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self.pushButton_opt_a_star_run.setEnabled(False)
 
 
+    def on_click_opt_dijkstra_run(self):
+
+        progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_dijkstra_complete)
+
+        self._thread_manager.run_thread(self.run_dijkstra_search, progress_updater=progress_updater,
+                                        additional_kwargs=dict())
+
+        self.pushButton_opt_dijkstra_run.setEnabled(False)
+
     def on_click_opt_dfs_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_dfs_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_dfs_complete)
 
         self._thread_manager.run_thread(self.run_dfs, progress_updater=progress_updater,
                                         additional_kwargs=dict())
@@ -1040,8 +1420,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
     def on_click_opt_iddfs_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_iddfs_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_iddfs_complete)
 
         self._thread_manager.run_thread(self.run_iddfs, progress_updater=progress_updater,
                                         additional_kwargs=dict())
@@ -1051,8 +1431,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
     def on_click_opt_nsga2_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_nsga2_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_nsga2_complete)
 
         self._thread_manager.run_thread(self.run_nsga2, progress_updater=progress_updater,
                                         additional_kwargs=dict())
@@ -1070,63 +1450,220 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         self.pushButton_opt_nsga3_run.setEnabled(False)
 
-    def on_click_opt_rl_dqn_start_training(self):
+    def on_click_opt_rl_dqn_training_and_inference_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_rl_dqn_training_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_rl_dqn_training_and_inference_complete)
 
-        self._thread_manager.run_thread(self.run_rl_dqn_start_training, progress_updater=progress_updater,
+        self._thread_manager.run_thread(self.run_rl_dqn_run_training_and_inference, progress_updater=progress_updater,
                                         additional_kwargs=dict())
 
-        self.pushButton_opt_rl_dqn_training.setEnabled(False)
+        self.pushButton_opt_rl_dqn_run_training_and_inference.setEnabled(False)
 
-    def on_click_opt_rl_dqn_run_inference(self):
+    def on_click_opt_llm_agent_prompt_run(self):
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
-                                              progress_bar_label=self.label_opt_progress,
-                                              on_finished=self._on_rl_dqn_complete)
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_llm_agent_prompt_complete)
 
-        self._thread_manager.run_thread(self.run_rl_dqn_inference, progress_updater=progress_updater,
+        self._thread_manager.run_thread(self.run_llm_agent_prompt, progress_updater=progress_updater,
                                         additional_kwargs=dict())
 
-        self.pushButton_opt_rl_dqn_run_inference.setEnabled(False)
+        self.pushButton_opt_llm_agent_run_prompt.setEnabled(False)
 
     def on_click_opt_human_sim(self):
 
         self.tabWidget_main.setCurrentIndex(2)
+
+    def on_click_opt_auto_run(self):
+
+        progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self.on_opt_auto_run_complete)
+
+        self._thread_manager.run_thread(self.run_opt_auto_run, progress_updater=progress_updater,
+                                        additional_kwargs=dict())
+
+    def run_opt_auto_run(self, progress_updater: PyQtProgressUpdater):
+
+        print_with_timestamp("Auto Run Optimization...")
+
+        for idx, scenario in enumerate(self._loaded_scenario_list):
+
+            print_with_timestamp(f"-------------- SCENARIO {idx} - '{scenario.name}' --------------")
+
+            self._active_scenario_idx = idx
+            self._initialize_scenario()
+
+            if self.checkBox_auto_run_a_star.isChecked():
+                self.run_a_star_search(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_dijkstra.isChecked():
+                self.run_dijkstra_search(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_dfs.isChecked():
+                self.run_dfs(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_iddfs.isChecked():
+                self.run_iddfs(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_nsga2.isChecked():
+                self.run_nsga2(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_nsga3.isChecked():
+                self.run_nsga3(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_llm_agent.isChecked():
+                self.run_llm_agent_prompt(progress_updater=progress_updater)
+
+            if self.checkBox_auto_run_rl_dqn.isChecked():
+                self.run_rl_dqn_run_training_and_inference(progress_updater=progress_updater)
+
+    def on_opt_auto_run_complete(self):
+
+        print_with_timestamp("Auto run completed... ")
 
     def on_action_show_about_dialog(self):
 
         # TODO Add about dialog window
         pass
 
-    def on_action_load_scenario(self):
+    def on_action_switch_scenario_directory(self):
 
         # Open a file dialog to select a folder, starting at the specified directory
         scenario_dir_path_str = QFileDialog.getExistingDirectory(caption="Select Scenario Directory",
-                                                                 directory=str(DIR_DATA_INPUT_SCENARIOS_JSON_PATH))
+                                                                 directory=str(DIR_DATA_INPUT_ALL_SCENARIO_DIRS_PATH))
 
-        scenario_dir_path = Path(scenario_dir_path_str)
-        scenario_file_path = scenario_dir_path / f"{scenario_dir_path.name}.json"
+        self._active_sc_directory = Path(scenario_dir_path_str)
 
-        if scenario_file_path.exists():
+        # TODO Add check to see if chosen directory is valid
 
-           self._scenario_file_path = scenario_file_path
-           self._initialize_scenario()
+        progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_reload_all_scenarios_complete)
 
-        else:
-            print_with_timestamp(f"Error loading scenario '{scenario_file_path.name}', file does not exist...")
-
+        self._thread_manager.run_thread(self._load_all_scenarios, progress_updater=progress_updater,
+                                        additional_kwargs=dict())
 
     def on_action_save_scenario(self):
 
         print_with_timestamp("Saving scenario... (Not yet implemented)")
 
+    def on_action_export_analysis_data(self):
+
+        analysis_data_dict_list = []
+
+        for scenario in self._loaded_scenario_list:
+
+            product_count = len(scenario.product_by_id_dict)
+            task_count = len(scenario.get_sorted_product_list()[0].target_state.processing_tasks)
+            skill_count = scenario.factory.get_total_processing_skill_count()
+            processing_machine_count = len(scenario.factory.processing_machine_by_id_dict)
+            transport_machine_count = len(scenario.factory.transport_machine_by_id_dict)
+            storage_machine_count = len(scenario.factory.storage_machine_by_id_dict)
+            machine_count = len(scenario.factory.machine_by_id_dict)
+            connections_count = len(scenario.factory.transport_connections)
+            action_catalog_count = len(scenario.sorted_action_catalog)
+
+            state_count = scenario.calculate_total_state_count()
+            transition_count = scenario.calculate_total_transition_count()
+
+            scenario_overview_dict = {COL_SCENARIO_OVERVIEW_NAME: scenario.name,
+                                      COL_SCENARIO_OVERVIEW_PRODUCTS: product_count,
+                                      COL_SCENARIO_OVERVIEW_TASKS: task_count,
+                                      COL_SCENARIO_OVERVIEW_PROC_SKILLS: skill_count,
+                                      COL_SCENARIO_OVERVIEW_PROCESSING_MACHINES: processing_machine_count,
+                                      COL_SCENARIO_OVERVIEW_TRANSPORT_MACHINES: transport_machine_count,
+                                      COL_SCENARIO_OVERVIEW_STORAGE_MACHINES: storage_machine_count,
+                                      COL_SCENARIO_OVERVIEW_MACHINES: machine_count,
+                                      COL_SCENARIO_OVERVIEW_CONNECTIONS: connections_count,
+                                      COL_SCENARIO_OVERVIEW_ACTION_CATALOG_COUNT: action_catalog_count,
+                                      COL_SCENARIO_OVERVIEW_STATE_COUNT: state_count,
+                                      COL_SCENARIO_OVERVIEW_TRANSITION_COUNT: transition_count,
+                                      }
+
+            a_star_expansions = 0
+            a_star_steps = 0
+            a_star_time_s = 0
+            a_star_cost = 0
+
+            nsga2_steps = 0
+            nsga2_time_s = 0
+            nsga2_cost = 0
+            nsga2_cost_delta = 0
+
+            rl_dqn_steps = 0
+            rl_dqn_time_s = 0
+            rl_dqn_cost = 0
+            rl_dqn_cost_delta = 0
+
+            a_star_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_A_STAR]
+
+            if a_star_opt_res is not None:
+                a_star_expansions = a_star_opt_res.other_params_dict[OPT_RES_PARAM_EXPANSIONS]
+                a_star_steps = len(a_star_opt_res.task_result_list)
+                a_star_time_s = a_star_opt_res.total_duration_seconds
+                a_star_cost = a_star_opt_res.total_cost
+
+            nsga2_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_NSGA2]
+
+            if nsga2_opt_res is not None:
+
+                nsga2_steps = len(nsga2_opt_res.task_result_list)
+                nsga2_time_s = nsga2_opt_res.total_duration_seconds
+                nsga2_cost = nsga2_opt_res.total_cost
+
+
+            rl_dqn_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_RL_DQN]
+
+            if rl_dqn_opt_res is not None:
+
+                rl_dqn_steps = len(rl_dqn_opt_res.task_result_list)
+                rl_dqn_time_s = rl_dqn_opt_res.total_duration_seconds
+                rl_dqn_cost = rl_dqn_opt_res.total_cost
+
+            if a_star_opt_res is not None and nsga2_opt_res is not None:
+                nsga2_cost_delta =  nsga2_opt_res.total_cost - a_star_opt_res.total_cost
+
+            if a_star_opt_res is not None and rl_dqn_opt_res is not None:
+                rl_dqn_cost_delta = rl_dqn_opt_res.total_cost - a_star_opt_res.total_cost
+
+            scenario_overview_dict["A* Expansions"] = a_star_expansions
+            scenario_overview_dict["A* Steps"] = a_star_steps
+            scenario_overview_dict["A* Time (s)"] = a_star_time_s
+            scenario_overview_dict["A* Cost"] = a_star_cost
+
+            scenario_overview_dict["NSGA2 Steps"] = nsga2_steps
+            scenario_overview_dict["NSGA2 Time (s)"] = nsga2_time_s
+            scenario_overview_dict["NSGA2 Cost"] = nsga2_cost
+            scenario_overview_dict["NSGA2 - A* Cost"] = nsga2_cost_delta
+
+            scenario_overview_dict["RL DQN Steps"] = rl_dqn_steps
+            scenario_overview_dict["RL DQN Time (s)"] = rl_dqn_time_s
+            scenario_overview_dict["RL DQN Cost"] = rl_dqn_cost
+            scenario_overview_dict["RL DQN - A* Cost"] = rl_dqn_cost_delta
+
+            analysis_data_dict_list.append(scenario_overview_dict)
+
+        if len(analysis_data_dict_list) == 0:
+            return
+
+        analysis_data_df = pd.DataFrame(data=analysis_data_dict_list)
+
+        file_output_path = self._active_sc_directory / "analysis_data.csv"
+        analysis_data_df.to_csv(file_output_path, sep=";")
+
+        print_with_timestamp(f"Analysis data saved to file: '{file_output_path.name}'")
+
     def run_a_star_search(self, progress_updater: PyQtProgressUpdater):
 
+        print_with_timestamp(f"Starting A* ...")
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
         opt_result  = astar_search(
-            scenario_file_path=self._scenario_file_path,
+            scenario_file_path=active_scenario.file_path,
             objective_function=self._objective_function,
             use_heuristic=True,
             time_limit_s=None,
@@ -1146,10 +1683,44 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                   f"expansions={opt_result.other_params_dict['expansions']} | "
                   f"elapsed={opt_result.total_duration_seconds:.2f}s\n")
 
+            active_scenario.opt_result_dict[OptimizationMethod.OPT_A_STAR] = opt_result
+
         else:
             print_with_timestamp("[A*] No solution within limits.")
 
-        self._opt_result_dict[OptimizationMethod.OPT_A_STAR] = opt_result
+        progress_updater.finish()
+
+    def run_dijkstra_search(self, progress_updater: PyQtProgressUpdater):
+
+        print_with_timestamp(f"Starting Dijkstra ...")
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_result = astar_search(
+            scenario_file_path=active_scenario.file_path,
+            objective_function=self._objective_function,
+            use_heuristic=False,
+            time_limit_s=None,
+            max_expansions=None,
+            verbose=True,
+            progress_updater=progress_updater,
+        )
+
+        if opt_result is not None:
+
+            print_with_timestamp(f"[Dijkstra] Optimal path found: {opt_result.action_idx_sequence}")
+
+            print_with_timestamp(f"[Dijkstra] cost={opt_result.total_cost:.4f} | "
+                                 f"time={opt_result.total_time:.4f} | "
+                                 f"energy={opt_result.total_energy:.4f} | "
+                                 f"reliability={opt_result.sequence_reliability:.6f} | "
+                                 f"expansions={opt_result.other_params_dict['expansions']} | "
+                                 f"elapsed={opt_result.total_duration_seconds:.2f}s\n")
+
+            active_scenario.opt_result_dict[OptimizationMethod.OPT_DIJKSTRA] = opt_result
+
+        else:
+            print_with_timestamp("[Dijkstra] No solution within limits.")
 
         progress_updater.finish()
 
@@ -1157,14 +1728,16 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         print_with_timestamp(f"Starting DFS...")
 
-        opt_result = run_iddfs(scenario_file_path=self._scenario_file_path,
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_result = run_iddfs(scenario_file_path=active_scenario.file_path,
                                objective_function=self._objective_function,
                                opt_method=OptimizationMethod.OPT_DFS,
                                max_steps=20,
                                verbose=True,
                                progress_updater=progress_updater)
 
-        self._opt_result_dict[OptimizationMethod.OPT_DFS] = opt_result
+        active_scenario.opt_result_dict[OptimizationMethod.OPT_DFS] = opt_result
 
         progress_updater.finish()
 
@@ -1172,14 +1745,16 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         print_with_timestamp(f"Starting IDDFS...")
 
-        opt_result = run_iddfs(scenario_file_path=self._scenario_file_path,
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_result = run_iddfs(scenario_file_path=active_scenario.file_path,
                                objective_function=self._objective_function,
                                opt_method=OptimizationMethod.OPT_IDDFS,
                                max_steps=20,
                                verbose=True,
                                progress_updater=progress_updater)
 
-        self._opt_result_dict[OptimizationMethod.OPT_IDDFS] = opt_result
+        active_scenario.opt_result_dict[OptimizationMethod.OPT_IDDFS] = opt_result
 
         progress_updater.finish()
 
@@ -1187,12 +1762,21 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         print_with_timestamp(f"Starting NSGA-II...")
 
-        opt_result = run_nsga(scenario_file_path=self._scenario_file_path,
+        nsga_config = NSGAConfig(max_sequence_length=self.spinBox_opt_nsga2_max_sequence_length.value(),
+                                 population_size=self.spinBox_opt_nsga2_population.value(),
+                                 number_generations=self.spinBox_opt_nsga2_generations.value(),
+                                 mutation_probability=(self.doubleSpinBox_opt_nsga2_mutation_probability.value() / 100),
+                                 penalty=1e4)
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_result = run_nsga(scenario_file_path=active_scenario.file_path,
                               objective_function=self._objective_function,
                               opt_method=OptimizationMethod.OPT_NSGA2,
+                              nsga_config=nsga_config,
                               progress_updater=progress_updater)
 
-        self._opt_result_dict[OptimizationMethod.OPT_NSGA2] = opt_result
+        active_scenario.opt_result_dict[OptimizationMethod.OPT_NSGA2] = opt_result
 
         progress_updater.finish()
 
@@ -1201,38 +1785,70 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         print_with_timestamp(f"Starting NSGA-III...")
 
-        opt_result = run_nsga(scenario_file_path=self._scenario_file_path,
+        nsga_config = NSGAConfig(max_sequence_length=self.spinBox_opt_nsga3_max_sequence_length.value(),
+                                 population_size=self.spinBox_opt_nsga3_population.value(),
+                                 number_generations=self.spinBox_opt_nsga3_generations.value(),
+                                 mutation_probability=(self.doubleSpinBox_opt_nsga3_mutation_probability.value() / 100),
+                                 penalty=1e4)
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        opt_result = run_nsga(scenario_file_path=active_scenario.file_path,
                               objective_function=self._objective_function,
                               opt_method=OptimizationMethod.OPT_NSGA3,
+                              nsga_config=nsga_config,
                               progress_updater=progress_updater)
 
-        self._opt_result_dict[OptimizationMethod.OPT_NSGA3] = opt_result
+        active_scenario.opt_result_dict[OptimizationMethod.OPT_NSGA3] = opt_result
 
         progress_updater.finish()
 
-    def run_rl_dqn_start_training(self, progress_updater: PyQtProgressUpdater):
+    def run_rl_dqn_run_training_and_inference(self, progress_updater: PyQtProgressUpdater):
 
-        print_with_timestamp(f"Starting RL DQN Start Training...")
+        print_with_timestamp(f"Starting RL DQN Training & Inference...")
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
         # Fall back to default console output during training
         sys.stdout = sys.__stdout__
 
-        run_training(scenario_file_path=self._scenario_file_path)
+        print_with_timestamp(f"FILE: {active_scenario.file_path}")
+
+        if not DEBUG_MODE:
+
+            training_duration_seconds = run_training(scenario_file_path=active_scenario.file_path)
+
+            inf_opt_result = run_inference(scenario_file_path=active_scenario.file_path,
+                                       objective_function=self._objective_function,
+                                       use_best_model=True,
+                                       count=1, quick_eval=False)
+
+            # TODO This should be improved
+            combined_opt_result = OptimizationResult(action_idx_sequence=inf_opt_result.action_idx_sequence,
+                                                     task_result_list=inf_opt_result.task_result_list,
+                                                     total_time=inf_opt_result.total_time,
+                                                     total_energy=inf_opt_result.total_energy,
+                                                     sequence_reliability=inf_opt_result.sequence_reliability,
+                                                     objective_function=inf_opt_result.objective_function,
+                                                     other_params_dict={"reward": inf_opt_result.other_params_dict["reward"],
+                                                                        "inference_duration": inf_opt_result.total_duration_seconds},
+                                                     total_duration_seconds=training_duration_seconds,
+                                                     opt_method=OptimizationMethod.OPT_RL_DQN)
+
+            active_scenario.opt_result_dict[OptimizationMethod.OPT_RL_DQN] = combined_opt_result
 
         # Use text edit widget for console output again
         sys.stdout = self._pyqt_log_stream
 
         progress_updater.finish()
 
-    def run_rl_dqn_inference(self, progress_updater: PyQtProgressUpdater):
+    def run_llm_agent_prompt(self, progress_updater: PyQtProgressUpdater):
 
-        print_with_timestamp(f"Starting RL DQN Inference...")
+        print_with_timestamp(f"Starting RL DQN Training & Inference...")
 
-        opt_result = run_inference(scenario_file_path=self._scenario_file_path,
-                                   objective_function=self._objective_function,
-                                   count=1, quick_eval=False)
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
-        self._opt_result_dict[OptimizationMethod.OPT_RL_DQN] = opt_result
+        print_with_timestamp("LLM Agent not yet implemented... ")
 
         progress_updater.finish()
 
@@ -1241,6 +1857,12 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._update_opt_result(OptimizationMethod.OPT_A_STAR)
 
         self.pushButton_opt_a_star_run.setEnabled(True)
+
+    def _on_dijkstra_complete(self) -> None:
+
+        self._update_opt_result(OptimizationMethod.OPT_DIJKSTRA)
+
+        self.pushButton_opt_dijkstra_run.setEnabled(True)
 
     def _on_dfs_complete(self) -> None:
 
@@ -1266,13 +1888,23 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         self.pushButton_opt_nsga3_run.setEnabled(True)
 
-    def _on_rl_dqn_training_complete(self) -> None:
-
-        print_with_timestamp(f"RL DQN training complete")
-        self.pushButton_opt_rl_dqn_training.setEnabled(True)
-
-    def _on_rl_dqn_complete(self) -> None:
+    def _on_rl_dqn_training_and_inference_complete(self) -> None:
 
         self._update_opt_result(OptimizationMethod.OPT_RL_DQN)
 
-        self.pushButton_opt_rl_dqn_run_inference.setEnabled(True)
+        self.pushButton_opt_rl_dqn_run_training_and_inference.setEnabled(True)
+
+    def _on_llm_agent_prompt_complete(self) -> None:
+
+        self._update_opt_result(OptimizationMethod.OPT_LLM_AGENT)
+
+        self.pushButton_opt_llm_agent_run_prompt.setEnabled(True)
+
+    def _on_reload_all_scenarios_complete(self) -> None:
+
+        self._active_scenario_idx = 0
+        self._initialize_scenario()
+        self._update_table_widget_scenario_overview()
+
+        self.pushButton_scenario_overview_reload.setEnabled(True)
+        print_with_timestamp("Reloaded all scenarios...")

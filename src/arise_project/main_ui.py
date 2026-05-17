@@ -12,8 +12,11 @@ __version__ = "0.0.3"
 
 import sys
 
+from src.arise_project.config.TEMP_DEBUGMODE import DEBUG_MODE
+
 # Import unused but necessary to avoid DLL load conflicts with PyQt6
-from stable_baselines3 import DQN
+if not DEBUG_MODE:
+    from stable_baselines3 import DQN
 
 from PyQt6 import QtWidgets
 

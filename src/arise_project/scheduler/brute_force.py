@@ -15,7 +15,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
-from src.arise_project.model.scenario import Scenario
+from src.arise_project.model.scenario import ScenarioCore
 
 
 def next_seq(seq: np.ndarray, base: int) -> bool:
@@ -44,7 +44,7 @@ def next_seq(seq: np.ndarray, base: int) -> bool:
 def main():
 
     # Load a scenario (product and factory)
-    example_scenario = Scenario(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
+    example_scenario = ScenarioCore(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH)
 
     sequence_length = 10
     base = len(example_scenario.sorted_action_catalog)

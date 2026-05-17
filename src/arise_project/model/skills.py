@@ -12,7 +12,7 @@ __version__ = "0.0.3"
 
 from abc import ABC
 
-from arise_project.model.variability import ProcessVariability
+from src.arise_project.model.variability import ProcessVariability
 
 
 class Skill(ABC):

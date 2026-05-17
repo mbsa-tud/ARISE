@@ -132,6 +132,15 @@ class Factory:
 
         raise ValueError(f"Skill with id {unique_id} does not exist anywhere in the factory.")
 
+    def get_total_processing_skill_count(self) -> int:
+
+        count = 0
+
+        for processing_machine in self._processing_machine_by_id_dict.values():
+            count += len(processing_machine.skill_set)
+
+        return count
+
     def get_transport_distance(self, source_machine_id: str, target_machine_id: str) -> float:
         return self._stationary_machine_distance_df.loc[source_machine_id, target_machine_id]
 
@@ -274,16 +283,27 @@ class Factory:
         """
 
         if unique_id not in self._machine_by_id_dict.keys():
-            raise ValueError(f"Machine with ID {unique_id} not found in factory")
+            raise ValueError(f"Machine with ID '{unique_id}' found in factory")
 
         return self._machine_by_id_dict[unique_id]
 
     def get_machines_by_skill_type(self, skill_type: type[Skill]) -> set[Machine]:
 
         if skill_type.__name__ not in self._machines_by_skill_dict.keys():
-            raise ValueError(f"No machines with {skill_type.__name__} not found in factory")
+            raise ValueError(f"No machines with skill type '{skill_type.__name__}' found in factory")
 
         return self._machines_by_skill_dict[skill_type.__name__]
+
+    def get_machines_by_machine_type(self, machine_type: type[Machine]) -> set[Machine]:
+
+        result_set = set()
+
+        for machine in self._machine_by_id_dict.values():
+
+            if isinstance(machine, machine_type):
+                result_set.add(machine)
+
+        return result_set
 
     def get_neighbors(self, unique_id: str) -> list[tuple[str, str, str]]:
         """
@@ -308,7 +328,7 @@ class Factory:
 
         for src_id, target_id, transport in self._transport_connections:
 
-            src = self.machine_by_id_dict[src_id]
+            src = self._machine_by_id_dict[src_id]
             tgt = self._machine_by_id_dict[target_id]
 
             repr_str += (f"  {src.__class__.__name__}({src.unique_id}) → "

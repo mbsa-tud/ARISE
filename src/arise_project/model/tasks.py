@@ -10,10 +10,11 @@ Version: 0.0.3
 __author__ = "Patrick Fischer"
 __version__ = "0.0.3"
 
+import math
 import random
 from abc import ABC, abstractmethod
 
-from arise_project.model.execution_mode import ExecutionMode
+from src.arise_project.model.execution_mode import ExecutionMode
 from src.arise_project.model.task_results import TaskResult
 from src.arise_project.model.skills import Skill, DrillingSkill, CuttingSkill, MillingSkill, TransportSkill
 
@@ -110,10 +111,18 @@ class ProcessingTask(Task):
         super().__init__(unique_id=unique_id)
 
         self._possible_skill_types = possible_skill_types
+        self._precondition_completed_task_id_set = set()
 
     @property
     def possible_skill_types(self) -> list[type[Skill]]:
         return self._possible_skill_types
+
+    @property
+    def precondition_completed_task_id_set(self) -> set[str]:
+        return self._precondition_completed_task_id_set
+
+    def add_precondition_task_id(self, task_id: str) -> None:
+        self._precondition_completed_task_id_set.add(task_id)
 
     @abstractmethod
     def get_params_dict(self) -> dict:
@@ -232,21 +241,33 @@ class MillingTask(ProcessingTask):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "MT"
 
-    def __init__(self, total_area: float) -> None:
+    def __init__(self, center_x: int, center_y: int, radius: int) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = MillingTask._generate_unique_id()
 
         super().__init__(unique_id=unique_id, possible_skill_types=[MillingSkill])
 
-        self._total_area = total_area
+        self._center_x = center_x
+        self._center_y = center_y
+        self._radius = radius
 
     @property
-    def total_area(self) -> float:
-        return self._total_area
+    def center_x(self) -> int:
+        return self._center_x
+
+    @property
+    def center_y(self) -> int:
+        return self._center_y
+
+    @property
+    def radius(self) -> int:
+        return self._radius
 
     def get_params_dict(self) -> dict:
-        return {"total_area": self._total_area}
+        return {"center_x": self.center_x,
+                "center_y": self.center_y,
+                "radius": self.radius}
 
     def execute(self, selected_skill: Skill, mode: ExecutionMode = ExecutionMode.RANDOM) -> tuple[float, float, bool]:
 
@@ -254,8 +275,8 @@ class MillingTask(ProcessingTask):
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
         # Calculate the time and energy cost specifically for this task
-        time_cost = selected_skill.time_factor * self._total_area
-        energy_cost = selected_skill.energy_factor * self._total_area
+        time_cost = selected_skill.time_factor * self._radius
+        energy_cost = selected_skill.energy_factor * self._radius
 
         # Introduce noise based on process variability defined individually for each skill (noise sim)
         match mode:
@@ -289,10 +310,10 @@ class MillingTask(ProcessingTask):
         return rounded_total_time_cost, rounded_total_energy_cost, success_bool
 
     def get_description_short(self) -> str:
-        return f"A: {self._total_area:.2f}"
+        return f"A: {self._radius:.2f}"
 
     def get_description_long(self) -> str:
-        return f"A: {self._total_area:.2f}"
+        return f"A: {self._radius:.2f}"
 
 
 class CuttingTask(ProcessingTask):
@@ -304,14 +325,36 @@ class CuttingTask(ProcessingTask):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "CT"
 
-    def __init__(self, total_length: float) -> None:
+    def __init__(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = CuttingTask._generate_unique_id()
 
         super().__init__(unique_id=unique_id, possible_skill_types=[CuttingSkill])
 
-        self._total_length = total_length
+        self._start_x = start_x
+        self._start_y = start_y
+        self._end_x = end_x
+        self._end_y = end_y
+
+        # Pre-calculation for faster reference
+        self._total_length = math.hypot(self._start_x - self._end_x, self._start_y - self._end_y)
+
+    @property
+    def start_x(self) -> int:
+        return self._start_x
+
+    @property
+    def start_y(self) -> int:
+        return self._start_y
+
+    @property
+    def end_x(self) -> int:
+        return self._end_x
+
+    @property
+    def end_y(self) -> int:
+        return self._end_y
 
     @property
     def total_length(self) -> float:

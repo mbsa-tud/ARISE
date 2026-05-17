@@ -17,31 +17,37 @@ from typing import Any
 
 import pandas as pd
 
-from arise_project.config.paths import FILE_NAME_OPT_RESULT_A_STAR_PKL, FILE_NAME_OPT_RESULT_DFS_PKL, \
-    FILE_NAME_OPT_RESULT_IDDFS_PKL, FILE_NAME_OPT_RESULT_NSGA2_PKL, FILE_NAME_OPT_RESULT_NSGA3_PKL, \
-    FILE_NAME_OPT_RESULT_RL_DQN_PKL, FILE_NAME_OPT_RESULT_TASKS_A_STAR_CSV, FILE_NAME_OPT_RESULT_TASKS_DFS_CSV, \
-    FILE_NAME_OPT_RESULT_TASKS_IDDFS_CSV, FILE_NAME_OPT_RESULT_TASKS_NSGA2_CSV, FILE_NAME_OPT_RESULT_TASKS_NSGA3_CSV, \
-    FILE_NAME_OPT_RESULT_TASKS_RL_DQN_CSV, FILE_NAME_OPT_RESULT_HUMAN_PKL, FILE_NAME_OPT_RESULT_TASKS_HUMAN_CSV
+from src.arise_project.config.paths import FILE_NAME_OPT_RESULT_A_STAR_PKL, FILE_NAME_OPT_RESULT_DIJKSTRA_PKL, \
+    FILE_NAME_OPT_RESULT_DFS_PKL, FILE_NAME_OPT_RESULT_IDDFS_PKL, FILE_NAME_OPT_RESULT_NSGA2_PKL, \
+    FILE_NAME_OPT_RESULT_NSGA3_PKL, FILE_NAME_OPT_RESULT_RL_DQN_PKL, FILE_NAME_OPT_RESULT_LLM_AGENT_PKL, \
+    FILE_NAME_OPT_RESULT_HUMAN_PKL, FILE_NAME_OPT_RESULT_TASKS_A_STAR_CSV, FILE_NAME_OPT_RESULT_TASKS_DIJKSTRA_CSV, \
+    FILE_NAME_OPT_RESULT_TASKS_DFS_CSV, FILE_NAME_OPT_RESULT_TASKS_IDDFS_CSV, FILE_NAME_OPT_RESULT_TASKS_NSGA2_CSV, \
+    FILE_NAME_OPT_RESULT_TASKS_NSGA3_CSV, FILE_NAME_OPT_RESULT_TASKS_RL_DQN_CSV, \
+    FILE_NAME_OPT_RESULT_TASKS_LLM_AGENT_CSV, FILE_NAME_OPT_RESULT_TASKS_HUMAN_CSV
 
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.task_results import TaskResult
-from arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.task_results import TaskResult
+from src.arise_project.tools.output_timestamp import print_with_timestamp
 
 OPTIMIZATION_RESULT_FILE_NAME_PKL = {OptimizationMethod.OPT_A_STAR: FILE_NAME_OPT_RESULT_A_STAR_PKL,
+                                     OptimizationMethod.OPT_DIJKSTRA: FILE_NAME_OPT_RESULT_DIJKSTRA_PKL,
                                      OptimizationMethod.OPT_DFS: FILE_NAME_OPT_RESULT_DFS_PKL,
                                      OptimizationMethod.OPT_IDDFS: FILE_NAME_OPT_RESULT_IDDFS_PKL,
                                      OptimizationMethod.OPT_NSGA2: FILE_NAME_OPT_RESULT_NSGA2_PKL,
                                      OptimizationMethod.OPT_NSGA3: FILE_NAME_OPT_RESULT_NSGA3_PKL,
                                      OptimizationMethod.OPT_RL_DQN: FILE_NAME_OPT_RESULT_RL_DQN_PKL,
+                                     OptimizationMethod.OPT_LLM_AGENT: FILE_NAME_OPT_RESULT_LLM_AGENT_PKL,
                                      OptimizationMethod.OPT_HUMAN: FILE_NAME_OPT_RESULT_HUMAN_PKL}
 
 OPTIMIZATION_RESULT_TASKS_FILE_NAME_CSV = {OptimizationMethod.OPT_A_STAR: FILE_NAME_OPT_RESULT_TASKS_A_STAR_CSV,
+                                           OptimizationMethod.OPT_DIJKSTRA: FILE_NAME_OPT_RESULT_TASKS_DIJKSTRA_CSV,
                                            OptimizationMethod.OPT_DFS: FILE_NAME_OPT_RESULT_TASKS_DFS_CSV,
                                            OptimizationMethod.OPT_IDDFS: FILE_NAME_OPT_RESULT_TASKS_IDDFS_CSV,
                                            OptimizationMethod.OPT_NSGA2: FILE_NAME_OPT_RESULT_TASKS_NSGA2_CSV,
                                            OptimizationMethod.OPT_NSGA3: FILE_NAME_OPT_RESULT_TASKS_NSGA3_CSV,
                                            OptimizationMethod.OPT_RL_DQN: FILE_NAME_OPT_RESULT_TASKS_RL_DQN_CSV,
+                                           OptimizationMethod.OPT_LLM_AGENT: FILE_NAME_OPT_RESULT_TASKS_LLM_AGENT_CSV,
                                            OptimizationMethod.OPT_HUMAN: FILE_NAME_OPT_RESULT_TASKS_HUMAN_CSV}
 
 COL_OPT_RES_PRODUCT = "Product"
@@ -146,6 +152,11 @@ class OptimizationResult:
     @property
     def total_duration_seconds(self) -> float:
         return self._total_duration_seconds
+
+    # TODO remove this temporary workaround as this attribute should not be able to be set
+    @total_duration_seconds.setter
+    def total_duration_seconds(self, value: int) -> None:
+        self._total_duration_seconds = value
 
     @property
     def opt_method(self) -> OptimizationMethod:

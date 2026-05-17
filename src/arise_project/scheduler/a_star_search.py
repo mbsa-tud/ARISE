@@ -20,14 +20,16 @@ from typing import Any, Callable
 
 import numpy as np
 
-from arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
-from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater, PyQtProgressUpdater
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.optimization_result import OptimizationResult
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.model.scenario import Scenario
-from arise_project.model.tasks import ExecutionMode
-from arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH
+from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater, PyQtProgressUpdater
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.scenario import ScenarioCore
+from src.arise_project.model.tasks import ExecutionMode
+from src.arise_project.tools.output_timestamp import print_with_timestamp
+
+OPT_RES_PARAM_EXPANSIONS = "expansions"
 
 HeuristicFunction = Callable[[Any], float]
 
@@ -78,7 +80,7 @@ class PriorityQueueItem:
         return f"PriorityQueueItem(f={self._f}, g={self._g}, counter={self._counter})"
 
 
-def product_completion_heuristic(current_scn: Scenario, objective_function: ObjectiveFunction) -> float:
+def product_completion_heuristic(current_scn: ScenarioCore, objective_function: ObjectiveFunction) -> float:
 
     minimum_cost = 0.0
 
@@ -134,7 +136,7 @@ def astar_search(
 
     # Initial node (empty path at initial state)
     # Compute g(start)=0 and h(start)
-    root_scn = Scenario(file_path=scenario_file_path, reset_class=True)
+    root_scn = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
     # Calculate h(start) or use 0.0 (Dijkstra)
     if use_heuristic:
@@ -170,8 +172,8 @@ def astar_search(
         smallest_pq_item = heapq.heappop(priority_queue)
         path = smallest_pq_item.path
 
-        # Reconstruct scenario at this node (build fresh Scenario and replay "parent path")
-        scn = Scenario(file_path=scenario_file_path, reset_class=True)
+        # Reconstruct scenario at this node (build fresh ScenarioCore and replay "parent path")
+        scn = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
         # Fast-forward to node state
         for a in path:
@@ -191,7 +193,7 @@ def astar_search(
                                       total_energy=scn.energy_sum,
                                       sequence_reliability=scn.sequence_reliability,
                                       objective_function=objective_function,
-                                      other_params_dict={"expansions": expansions},
+                                      other_params_dict={OPT_RES_PARAM_EXPANSIONS: expansions},
                                       total_duration_seconds=(time.time() - start_time),
                                       opt_method=OptimizationMethod.OPT_A_STAR)
 
@@ -212,7 +214,7 @@ def astar_search(
             child_path = path + (int(action_idx),)
 
             # Compute g(child) by evaluating the partial path with the objective
-            scn_child = Scenario(file_path=scenario_file_path, reset_class=True)
+            scn_child = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
             # Execute the sequence (partial or complete)
             done, steps_used, _ = scn_child.execute_action_idx_sequence(

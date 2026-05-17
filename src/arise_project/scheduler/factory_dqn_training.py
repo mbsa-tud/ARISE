@@ -14,6 +14,7 @@ __version__ = "0.0.3"
 import json
 import time
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -25,18 +26,22 @@ from stable_baselines3.common.env_checker import check_env
 
 from jsonschema import validate, ValidationError
 
-from arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
-from arise_project.model.objective import ObjectiveFunction
-from arise_project.model.optimization_method import OptimizationMethod
-from arise_project.model.optimization_result import OptimizationResult
-from arise_project.tools.hash_generation import get_scenario_output_dir_path
+from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
+from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.optimization_method import OptimizationMethod
+from src.arise_project.model.optimization_result import OptimizationResult
+from src.arise_project.tools.duration_format import duration_formatting
+from src.arise_project.tools.hash_generation import get_scenario_data_dir_path
 from src.arise_project.config.paths import DIR_NAME_LOGS, FILE_NAME_DQN_CONFIG, FILE_NAME_BEST_MODEL, \
     FILE_NAME_FINAL_MODEL, DIR_NAME_DQN, DIR_NAME_MODELS, DIR_NAME_BACKUP
 
 from src.arise_project.tools.hash_generation import get_canonical_hash_dqn_config_json
 from src.arise_project.config.paths import FILE_DQN_CONFIG_JSON_PATH
-from src.arise_project.model.scenario import Scenario
+from src.arise_project.model.scenario import ScenarioCore
 from src.arise_project.scheduler.factory_gym_env import FactoryEnv
+
+
+OPT_RES_PARAM_REWARD = "reward"
 
 
 def get_dqn_model_dir_path(scenario_file_path: Path, output_dir_path: Path) -> Path:
@@ -76,13 +81,13 @@ def load_dqn_config(scenario_file_path: Path) -> dict:
     return dqn_config_dict
 
 
-def run_training(scenario_file_path: Path):
+def run_training(scenario_file_path: Path) -> float:
 
     # Load the DQN training configuration
     dqn_config_dict = load_dqn_config(scenario_file_path=scenario_file_path)
 
     # Load a scenario (product and factory)
-    scenario = Scenario(file_path=scenario_file_path)
+    scenario = ScenarioCore(file_path=scenario_file_path)
 
     # Build the training environment based on the DQN configuration file
     train_env = FactoryEnv(scenario,
@@ -96,7 +101,7 @@ def run_training(scenario_file_path: Path):
     train_env = Monitor(train_env)
 
     # Create a new scenario clone for evaluation
-    eval_scenario = Scenario(file_path=scenario_file_path, reset_class=True)
+    eval_scenario = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
     # Build the evaluation environment based on the DQN configuration file
     eval_env = FactoryEnv(eval_scenario,
@@ -110,7 +115,7 @@ def run_training(scenario_file_path: Path):
     eval_env = Monitor(eval_env)
 
     # Get scenario output directory path (based on hash value of scenario JSON file)
-    output_dir_path = get_scenario_output_dir_path(scenario_file_path=scenario_file_path)
+    output_dir_path = get_scenario_data_dir_path(scenario_file_path=scenario_file_path)
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Get dqn model output directory path (based on hash value of dqn config JSON file)
@@ -158,7 +163,14 @@ def run_training(scenario_file_path: Path):
     # Start training the model
     model.learn(total_timesteps=dqn_config_dict["training"]["total_timesteps"], callback=eval_cb)
 
-    print(f"Training time -> {time.time() - start_time:.5f} seconds")
+    training_duration_seconds = time.time() - start_time
+    training_duration_str = duration_formatting(training_duration_seconds)
+    print(f"Training time -> {training_duration_str}")
+
+    timestamp_training_str = f"{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - {training_duration_str}"
+
+    with open(models_path / "last_training_duration.txt", "w") as f:
+        f.write(timestamp_training_str)
 
     model.save(path=models_path / FILE_NAME_FINAL_MODEL)
 
@@ -171,6 +183,8 @@ def run_training(scenario_file_path: Path):
 
     print("Done.")
 
+    return training_duration_seconds
+
 
 def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunction,
                   count: int = 1, quick_eval: bool = False, use_best_model: bool = False,
@@ -182,7 +196,7 @@ def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunctio
     start_time = time.time()
 
     # Get output directory path (based on hash value of JSON file)
-    output_dir_path = get_scenario_output_dir_path(scenario_file_path=scenario_file_path)
+    output_dir_path = get_scenario_data_dir_path(scenario_file_path=scenario_file_path)
 
     if not output_dir_path.exists():
         raise FileNotFoundError(f"Directory '{output_dir_path.name}' doesn't exist. Please train a model first.")
@@ -195,7 +209,7 @@ def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunctio
     # Load the DQN training configuration
     dqn_config_dict = load_dqn_config(scenario_file_path=scenario_file_path)
 
-    scenario = Scenario(file_path=scenario_file_path, reset_class=True)
+    scenario = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
     original_env = FactoryEnv(scenario=scenario,
                               alpha=dqn_config_dict["environment"]["alpha"],
@@ -279,6 +293,6 @@ def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunctio
                               total_energy=scenario.energy_sum,
                               sequence_reliability=scenario.sequence_reliability,
                               objective_function=objective_function,
-                              other_params_dict={"reward": reward},
+                              other_params_dict={OPT_RES_PARAM_REWARD: reward},
                               total_duration_seconds=(time.time() - start_time),
                               opt_method=OptimizationMethod.OPT_RL_DQN)
