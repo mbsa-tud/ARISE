@@ -1,0 +1,67 @@
+{
+  "scenario_name": "Tiny Test Scenario",
+  "scenario_note": "Minimal scenario used for fast scheduler unit tests",
+  "factory": {
+    "storage_machines": [
+      {
+        "class": "StorageMachine",
+        "name": "ST1",
+        "x": 0.0,
+        "y": 0.0,
+        "skill_params": {
+          "store_skill": {
+            "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
+            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+          },
+          "retrieve_skill": {
+            "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
+            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+          }
+        }
+      }
+    ],
+    "processing_machines": [
+      {
+        "class": "DrillingMachine",
+        "name": "DM1",
+        "x": 1.0,
+        "y": 0.0,
+        "skill_params": {
+          "drilling_skill": {
+            "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
+            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+          }
+        }
+      }
+    ],
+    "transporter_machines": [
+      {
+        "class": "AutomatedGuidedVehicle",
+        "name": "AGV1",
+        "skill_params": {
+          "transport_skill": {
+            "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
+            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+          }
+        },
+        "from": ["*"],
+        "to": ["*"]
+      }
+    ]
+  },
+  "product": {
+    "class": "Plate",
+    "count": 1,
+    "starting_location": "ST1",
+    "target_location": "ST1",
+    "params": {"width": 10, "height": 10},
+    "processing_tasks": [
+      {
+        "class": "DrillingTask",
+        "name": "DT1",
+        "preconditions": [],
+        "params": {"center_x": 5, "center_y": 5, "radius": 2}
+      }
+    ]
+  }
+}

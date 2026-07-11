@@ -29,8 +29,8 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 
 from matplotlib.figure import Figure
 
-from arise_project.model.nsga_config import NSGAConfig
-from arise_project.scheduler.llm_scheduler import run_iterative_llm_scheduler, OPT_RES_PARAM_TOTAL_TOKEN_COUNT, \
+from src.arise_project.model.nsga_config import NSGAConfig
+from src.arise_project.scheduler.llm_scheduler import run_iterative_llm_scheduler, OPT_RES_PARAM_TOTAL_TOKEN_COUNT, \
     OPT_RES_PARAM_AVG_RESPONSE_TIME
 from src.arise_project.gui.custom.plots import AnalysisPlot
 from src.arise_project.model.product import Plate

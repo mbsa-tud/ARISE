@@ -17,7 +17,7 @@ from pathlib import Path
 from jsonschema import validate, ValidationError
 from openai import OpenAI
 
-from arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.tools.output_timestamp import print_with_timestamp
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, FILE_SCENARIO_JSON_SCHEMA_PATH
 from src.arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater, DummyProgressUpdater
 from src.arise_project.model.objective import ObjectiveFunction

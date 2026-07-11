@@ -30,7 +30,7 @@ from pymoo.operators.crossover.pntx import TwoPointCrossover
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.indicators.hv import HV
 
-from arise_project.model.nsga_config import NSGAConfig
+from src.arise_project.model.nsga_config import NSGAConfig
 from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.optimization_result import OptimizationResult

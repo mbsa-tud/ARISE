@@ -161,12 +161,12 @@ class ScenarioCore:
         with open(FILE_SCENARIO_JSON_SCHEMA_PATH, 'r') as schema_file:
             schema = json.load(schema_file)
 
-        # Validate the JSON data against the schema
+        # Validate the JSON data against the schema, fail fast with a clear message on mismatch
         try:
             validate(instance=data_dict, schema=schema)
 
         except ValidationError as e:
-            print("Unable to load scenario due to JSON validation error:", e.message)
+            raise ValueError(f"Scenario file '{file_path}' failed JSON schema validation: {e.message}") from e
 
         # --- Create the factory ---
         self._factory = Factory()
@@ -765,12 +765,12 @@ class Scenario(ScenarioCore):
         with open(FILE_SCENARIO_JSON_SCHEMA_PATH, 'r') as schema_file:
             schema = json.load(schema_file)
 
-        # Validate the JSON data against the schema
+        # Validate the JSON data against the schema, fail fast with a clear message on mismatch
         try:
             validate(instance=data_dict, schema=schema)
 
         except ValidationError as e:
-            print("Unable to load scenario due to JSON validation error:", e.message)
+            raise ValueError(f"Scenario file '{file_path}' failed JSON schema validation: {e.message}") from e
 
         self._name = data_dict["scenario_name"]
         self._note = data_dict["scenario_note"]
