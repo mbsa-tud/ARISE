@@ -121,6 +121,33 @@ class OpenAIGPTClient(metaclass=Singleton):
 
         return response_data
 
+    conversation_id = None
+
+    def ask_llm(self, user_input: str):
+
+        global conversation_id
+
+        response = self.client.responses.create(
+            model="gpt-5",
+            conversation=conversation_id,  # <-- keeps context
+            input=[
+                {"role": "system", "content": "Always return valid JSON matching the schema."},
+                {"role": "user", "content": user_input}
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "task_plan",
+                    "schema": self.json_response_schema,
+                }
+            }
+        )
+
+        # Save conversation ID for next turn
+        conversation_id = response.conversation
+
+        return response.output[0].content[0].text
+
 
 def validate_json_str(json_text: str, schema: dict) -> dict:
     """

@@ -4002,6 +4002,32 @@
                 <string>Tokens:</string>
                </property>
               </widget>
+              <widget class="QLabel" name="label_opt_llm_agent_avg_response_title">
+               <property name="geometry">
+                <rect>
+                 <x>410</x>
+                 <y>90</y>
+                 <width>111</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>Avg.  Response (s):</string>
+               </property>
+              </widget>
+              <widget class="QLabel" name="label_opt_llm_agent_avg_response">
+               <property name="geometry">
+                <rect>
+                 <x>530</x>
+                 <y>90</y>
+                 <width>49</width>
+                 <height>31</height>
+                </rect>
+               </property>
+               <property name="text">
+                <string>-</string>
+               </property>
+              </widget>
              </widget>
             </item>
             <item>

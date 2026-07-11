@@ -30,6 +30,8 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 
 from arise_project.model.nsga_config import NSGAConfig
+from arise_project.scheduler.llm_scheduler import run_iterative_llm_scheduler, OPT_RES_PARAM_TOTAL_TOKEN_COUNT, \
+    OPT_RES_PARAM_AVG_RESPONSE_TIME
 from src.arise_project.gui.custom.plots import AnalysisPlot
 from src.arise_project.model.product import Plate
 from src.arise_project.config.TEMP_DEBUGMODE import DEBUG_MODE
@@ -45,7 +47,11 @@ from src.arise_project.scheduler.depth_first_search import run_iddfs, OPT_RES_PA
 from src.arise_project.scheduler.genetic_algorithms import run_nsga, OPT_RES_PARAM_HYPERVOLUME
 
 if not DEBUG_MODE:
-    from src.arise_project.scheduler.factory_dqn_training import run_inference, run_training, OPT_RES_PARAM_REWARD
+    from src.arise_project.scheduler.factory_dqn_training import (run_inference, run_training, OPT_RES_PARAM_REWARD)
+
+else:
+    # TODO temporary work around
+    OPT_RES_PARAM_REWARD = "reward"
 
 from src.arise_project.tools.duration_format import duration_formatting
 from src.arise_project.tools.hash_generation import get_scenario_data_dir_path
@@ -967,8 +973,11 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                     self.label_opt_rl_dqn_reward.setText(f"{reward:.3f}")
 
                 case OptimizationMethod.OPT_LLM_AGENT:
-                    tokens = -1 #active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_TOKENS]
-                    self.label_opt_rl_dqn_reward.setText(f"{tokens}")
+                    tokens = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_TOTAL_TOKEN_COUNT]
+                    self.label_opt_llm_agent_tokens.setText(f"{tokens}")
+
+                    avg_response_seconds = active_scenario.opt_result_dict[opt_method].other_params_dict[OPT_RES_PARAM_AVG_RESPONSE_TIME]
+                    self.label_opt_llm_agent_avg_response.setText(f"{avg_response_seconds:.2f} s")
 
 
     def _update_table_widget_opt_comparison(self) -> None:
@@ -1844,11 +1853,13 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def run_llm_agent_prompt(self, progress_updater: PyQtProgressUpdater):
 
-        print_with_timestamp(f"Starting RL DQN Training & Inference...")
+        print_with_timestamp(f"Starting optimization using LLM Agent...")
 
         active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
-        print_with_timestamp("LLM Agent not yet implemented... ")
+        opt_result = run_iterative_llm_scheduler(scenario_file_path=active_scenario.file_path, progress_updater=progress_updater)
+
+        active_scenario.opt_result_dict[OptimizationMethod.OPT_LLM_AGENT] = opt_result
 
         progress_updater.finish()
 

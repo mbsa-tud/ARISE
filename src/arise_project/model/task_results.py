@@ -10,7 +10,7 @@ Version: 0.0.2
 __author__ = "Patrick Fischer"
 __version__ = "0.0.2"
 
-from src.arise_project.model.skills import Skill
+from src.arise_project.model.skills import Skill, TransportSkill
 
 
 class TaskResult:
@@ -32,7 +32,7 @@ class TaskResult:
 
     def __repr__(self) -> str:
         return (f"{self._product.unique_id} | {self._task.unique_id} | {self._skill.unique_id} "
-                f"({self._total_time:.2f}/{self._total_energy:.2f}/{str(self._success_bool)[:1]})")
+                f"({self._total_time:.2f}/{self._total_energy:.2f}/{self._skill.reliability:.3f}/{str(self._success_bool)[:1]})")
 
     @property
     def product(self) -> "Product":
@@ -77,3 +77,15 @@ class TaskResult:
         return_str += f"{self._skill.unique_id}"
 
         return return_str
+
+    def get_long_str(self) -> str:
+
+        result_str = (f"product = {self.product.unique_id} | task = {self.task.unique_id} | "
+                      f"machine = {self.machine.unique_id} | skill = {self.skill.unique_id} | "
+                      f"type = {self.skill.type_name()} | time = {self.total_time} | "
+                      f"energy = {self.total_energy} | reliability = {self.skill.reliability}")
+
+        if isinstance(self._skill, TransportSkill):
+            result_str += f" | transport to {self._task.target_machine_id}"
+
+        return result_str
