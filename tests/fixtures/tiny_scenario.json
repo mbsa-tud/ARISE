@@ -1,6 +1,15 @@
 {
   "scenario_name": "Tiny Test Scenario",
   "scenario_note": "Minimal scenario used for fast scheduler unit tests",
+  "variability_configurations": [
+    {
+      "name": "default",
+      "use_normal_distribution": false,
+      "uniform_time_variability": 0.0,
+      "uniform_energy_variability": 0.0,
+      "normal_dist_sigma_factor": 0.0
+    }
+  ],
   "factory": {
     "storage_machines": [
       {
@@ -11,11 +20,11 @@
         "skill_params": {
           "store_skill": {
             "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
-            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+            "variability": "default"
           },
           "retrieve_skill": {
             "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
-            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+            "variability": "default"
           }
         }
       }
@@ -29,7 +38,7 @@
         "skill_params": {
           "drilling_skill": {
             "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
-            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+            "variability": "default"
           }
         }
       }
@@ -41,7 +50,7 @@
         "skill_params": {
           "transport_skill": {
             "time_factor": 1.0, "energy_factor": 1.0, "reliability": 1.0,
-            "variability": {"use_normal_distribution": false, "uniform_time_variability": 0.0, "uniform_energy_variability": 0.0, "normal_dist_sigma_factor": 0.0}
+            "variability": "default"
           }
         },
         "from": ["*"],

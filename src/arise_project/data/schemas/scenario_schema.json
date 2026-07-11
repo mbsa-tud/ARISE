@@ -8,6 +8,36 @@
     "scenario_note": {
       "type": "string"
     },
+    "variability_configurations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "use_normal_distribution": {
+            "type": "boolean"
+          },
+          "uniform_time_variability": {
+            "type": "number"
+          },
+          "uniform_energy_variability": {
+            "type": "number"
+          },
+          "normal_dist_sigma_factor": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "use_normal_distribution",
+          "uniform_time_variability",
+          "uniform_energy_variability",
+          "normal_dist_sigma_factor"
+        ]
+      }
+    },
     "factory": {
       "type": "object",
       "properties": {
@@ -165,6 +195,7 @@
     }
   },
   "required": [
+    "variability_configurations",
     "factory",
     "product"
   ]

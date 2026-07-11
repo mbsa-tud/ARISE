@@ -153,6 +153,38 @@ class ScenarioCore:
 
         return True
 
+    @staticmethod
+    def _build_variability_config_dict(variability_configurations: list[dict], file_path: Path) -> dict[str, ProcessVariability]:
+        """
+        Build the named variability configs declared at the top level of the scenario file, so machines can
+        reference a shared config by name instead of repeating the same values everywhere.
+        """
+
+        variability_config_by_name_dict: dict[str, ProcessVariability] = {}
+
+        for config in variability_configurations:
+
+            name = config["name"]
+
+            if name in variability_config_by_name_dict:
+                raise ValueError(f"Scenario file '{file_path}' defines duplicate variability configuration name '{name}'.")
+
+            variability_config_by_name_dict[name] = ProcessVariability(
+                use_normal_distribution=config["use_normal_distribution"],
+                uniform_time_variability=config["uniform_time_variability"],
+                uniform_energy_variability=config["uniform_energy_variability"],
+                normal_dist_sigma_factor=config["normal_dist_sigma_factor"])
+
+        return variability_config_by_name_dict
+
+    @staticmethod
+    def _resolve_variability(variability_config_by_name_dict: dict[str, ProcessVariability], config_name: str) -> ProcessVariability:
+
+        if config_name not in variability_config_by_name_dict:
+            raise ValueError(f"Scenario file references unknown variability configuration '{config_name}'.")
+
+        return variability_config_by_name_dict[config_name]
+
     def _load_from_json(self, file_path: Path) -> None:
 
         with open(file_path, 'r') as json_file:
@@ -168,6 +200,10 @@ class ScenarioCore:
         except ValidationError as e:
             raise ValueError(f"Scenario file '{file_path}' failed JSON schema validation: {e.message}") from e
 
+        # Build named variability configs once, referenced by name from each skill's params below
+        variability_config_by_name_dict = self._build_variability_config_dict(
+            data_dict["variability_configurations"], file_path=file_path)
+
         # --- Create the factory ---
         self._factory = Factory()
         factory_dict = data_dict["factory"]
@@ -182,19 +218,15 @@ class ScenarioCore:
                 store_skill = StoreSkill(time_factor=stm["skill_params"]["store_skill"]["time_factor"],
                                          energy_factor=stm["skill_params"]["store_skill"]["energy_factor"],
                                          reliability=stm["skill_params"]["store_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=stm["skill_params"]["store_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=stm["skill_params"]["store_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=stm["skill_params"]["store_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=stm["skill_params"]["store_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                         process_variability=self._resolve_variability(
+                                             variability_config_by_name_dict, stm["skill_params"]["store_skill"]["variability"]))
 
                 # Create skill with the machine's skill-specific parameters
                 retrieve_skill = RetrieveSkill(time_factor=stm["skill_params"]["retrieve_skill"]["time_factor"],
                                                energy_factor=stm["skill_params"]["retrieve_skill"]["energy_factor"],
                                                reliability=stm["skill_params"]["retrieve_skill"]["reliability"],
-                                               process_variability=ProcessVariability(use_normal_distribution=stm["skill_params"]["retrieve_skill"]["variability"]["use_normal_distribution"],
-                                                                                      uniform_time_variability=stm["skill_params"]["retrieve_skill"]["variability"]["uniform_time_variability"],
-                                                                                      uniform_energy_variability=stm["skill_params"]["retrieve_skill"]["variability"]["uniform_energy_variability"],
-                                                                                      normal_dist_sigma_factor=stm["skill_params"]["retrieve_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                               process_variability=self._resolve_variability(
+                                                   variability_config_by_name_dict, stm["skill_params"]["retrieve_skill"]["variability"]))
 
                 storage_machine = StorageMachine(name=stm["name"], x=stm["x"], y=stm["y"],
                                                  store_skill=store_skill, retrieve_skill=retrieve_skill)
@@ -211,10 +243,8 @@ class ScenarioCore:
                 drilling_skill = DrillingSkill(time_factor=prm["skill_params"]["drilling_skill"]["time_factor"],
                                                energy_factor=prm["skill_params"]["drilling_skill"]["energy_factor"],
                                                reliability=prm["skill_params"]["drilling_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["drilling_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=prm["skill_params"]["drilling_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=prm["skill_params"]["drilling_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=prm["skill_params"]["drilling_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                               process_variability=self._resolve_variability(
+                                                   variability_config_by_name_dict, prm["skill_params"]["drilling_skill"]["variability"]))
 
                 drilling_machine = DrillingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                    drilling_skill=drilling_skill)
@@ -228,10 +258,8 @@ class ScenarioCore:
                 cutting_skill = CuttingSkill(time_factor=prm["skill_params"]["cutting_skill"]["time_factor"],
                                              energy_factor=prm["skill_params"]["cutting_skill"]["energy_factor"],
                                              reliability=prm["skill_params"]["cutting_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["cutting_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=prm["skill_params"]["cutting_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=prm["skill_params"]["cutting_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=prm["skill_params"]["cutting_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                             process_variability=self._resolve_variability(
+                                                 variability_config_by_name_dict, prm["skill_params"]["cutting_skill"]["variability"]))
 
                 cutting_machine = CuttingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                  cutting_skill=cutting_skill)
@@ -245,10 +273,8 @@ class ScenarioCore:
                 milling_skill = MillingSkill(time_factor=prm["skill_params"]["milling_skill"]["time_factor"],
                                              energy_factor=prm["skill_params"]["milling_skill"]["energy_factor"],
                                              reliability=prm["skill_params"]["milling_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=prm["skill_params"]["milling_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=prm["skill_params"]["milling_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=prm["skill_params"]["milling_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=prm["skill_params"]["milling_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                             process_variability=self._resolve_variability(
+                                                 variability_config_by_name_dict, prm["skill_params"]["milling_skill"]["variability"]))
 
                 milling_machine = MillingMachine(name=prm["name"], x=prm["x"], y=prm["y"],
                                                  milling_skill=milling_skill)
@@ -282,10 +308,8 @@ class ScenarioCore:
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                                 process_variability=self._resolve_variability(
+                                                     variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))
 
                 agv = AutomatedGuidedVehicle(name=tpm["name"], transport_skill=transport_skill)
 
@@ -300,10 +324,8 @@ class ScenarioCore:
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                                  process_variability=self._resolve_variability(
+                                                      variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))
 
                 tar = ThreeAxisRobot(name=tpm["name"], transport_skill=transport_skill)
 
@@ -318,10 +340,8 @@ class ScenarioCore:
                 transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
                                                  energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
-                                         process_variability=ProcessVariability(use_normal_distribution=tpm["skill_params"]["transport_skill"]["variability"]["use_normal_distribution"],
-                                                                                uniform_time_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_time_variability"],
-                                                                                uniform_energy_variability=tpm["skill_params"]["transport_skill"]["variability"]["uniform_energy_variability"],
-                                                                                normal_dist_sigma_factor=tpm["skill_params"]["transport_skill"]["variability"]["normal_dist_sigma_factor"]))
+                                                 process_variability=self._resolve_variability(
+                                                     variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))
 
                 cob = ConveyorBelt(name=tpm["name"], transport_skill=transport_skill)
 

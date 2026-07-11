@@ -1,6 +1,15 @@
 {
   "scenario_name": "Plate F - 2S/3D/3C/3M/2A",
   "scenario_note": "More complex with two products",
+  "variability_configurations": [
+    {
+      "name": "default",
+      "use_normal_distribution": false,
+      "uniform_time_variability": 0.0,
+      "uniform_energy_variability": 0.0,
+      "normal_dist_sigma_factor": 0.0
+    }
+  ],
   "factory": {
     "storage_machines": [
       {
@@ -13,23 +22,13 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           },
           "retrieve_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
 
         }
@@ -44,23 +43,13 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           },
           "retrieve_skill": {
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
 
         }
@@ -77,12 +66,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -96,12 +80,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 0.995,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -115,12 +94,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -134,12 +108,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -153,12 +122,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -172,12 +136,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -191,12 +150,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -210,12 +164,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       },
@@ -229,12 +178,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         }
       }
@@ -248,12 +192,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 1.0,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         },
         "from": ["*"],
@@ -267,12 +206,7 @@
             "time_factor": 1.0,
             "energy_factor": 1.0,
             "reliability": 0.995,
-            "variability": {
-              "use_normal_distribution": false,
-              "uniform_time_variability": 0.0,
-              "uniform_energy_variability": 0.0,
-              "normal_dist_sigma_factor": 0.0
-            }
+            "variability": "default"
           }
         },
         "from": ["*"],

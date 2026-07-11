@@ -39,6 +39,30 @@ def test_load_scenario_with_schema_violation_raises_value_error(tmp_path):
         ScenarioCore(file_path=broken_scenario_path, reset_class=True)
 
 
+def test_load_scenario_with_unknown_variability_reference_raises_value_error(tmp_path):
+
+    scenario_dict = json.loads(TINY_SCENARIO_PATH.read_text())
+    scenario_dict["factory"]["storage_machines"][0]["skill_params"]["store_skill"]["variability"] = "does_not_exist"
+
+    broken_scenario_path = tmp_path / "unknown_variability.json"
+    broken_scenario_path.write_text(json.dumps(scenario_dict))
+
+    with pytest.raises(ValueError, match="unknown variability configuration 'does_not_exist'"):
+        ScenarioCore(file_path=broken_scenario_path, reset_class=True)
+
+
+def test_load_scenario_with_duplicate_variability_names_raises_value_error(tmp_path):
+
+    scenario_dict = json.loads(TINY_SCENARIO_PATH.read_text())
+    scenario_dict["variability_configurations"].append(scenario_dict["variability_configurations"][0])
+
+    broken_scenario_path = tmp_path / "duplicate_variability.json"
+    broken_scenario_path.write_text(json.dumps(scenario_dict))
+
+    with pytest.raises(ValueError, match="duplicate variability configuration name 'default'"):
+        ScenarioCore(file_path=broken_scenario_path, reset_class=True)
+
+
 def test_load_additional_info_with_schema_violation_raises_value_error(tmp_path):
 
     broken_scenario = {"factory": {"storage_machines": [], "processing_machines": [], "transporter_machines": []}}
