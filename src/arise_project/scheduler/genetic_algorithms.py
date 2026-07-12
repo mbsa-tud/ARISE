@@ -41,6 +41,14 @@ from src.arise_project.model.scenario import ScenarioCore
 
 
 OPT_RES_PARAM_HYPERVOLUME = "hypervolume"
+OPT_RES_PARAM_NUM_TRIALS = "num_trials"
+OPT_RES_PARAM_BEST_TRIAL_INDEX = "best_trial_index"
+
+# Best-of-N default: NSGA-II/III are population-based and sensitive to random initialization, so
+# a single run is not a reliable data point. 5 trials cheaply escapes an unlucky initialization
+# with diminishing returns beyond that; use more (e.g. 10-30) only when reporting mean/variance
+# for a paper rather than picking a practical default for day-to-day comparisons.
+DEFAULT_NUM_TRIALS = 5
 
 
 class FactorySequenceProblem(Problem):
@@ -392,18 +400,39 @@ def print_best_sequence(scenario: ScenarioCore, res, prefer: str = "sum"):
         print(scenario.sorted_action_catalog[action_idx])
 
 
-def objective_search(row: np.ndarray) -> float:
+def _best_front_member_by_objective(result: Result, objective_function: ObjectiveFunction) -> tuple[np.ndarray, float]:
+    """
+    Pick the Pareto-front member that minimizes the (normalized) objective function, so the
+    choice is consistent with the cost reported by every other scheduling method.
+    Returns (best_seq, cost).
+    """
 
-    # row is something like [time, energy]
-    w_time, w_energy = 0.5, 0.5
-    return w_time * row[0] + w_energy * row[1]
+    # Use the (normalized) objective function so the front member picked here is
+    # consistent with the cost reported by every other scheduling method
+    reliability_column = (1.0 - result.F[:, 2]) if result.F.shape[1] > 2 else np.ones(len(result.F))
+    values = np.array([objective_function(time_cost=row[0], energy_cost=row[1], reliability=reliability)
+                       for row, reliability in zip(result.F, reliability_column)])
+    best_idx = int(np.argmin(values))
+
+    return result.X[best_idx], float(values[best_idx])
 
 
 def run_nsga(scenario_file_path: Path,
              objective_function: ObjectiveFunction,
              opt_method: OptimizationMethod,
              nsga_config: NSGAConfig,
-             progress_updater = DummyProgressUpdater()) -> OptimizationResult:
+             num_trials: int = DEFAULT_NUM_TRIALS,
+             base_seed: int = 42,
+             progress_updater = DummyProgressUpdater()) -> OptimizationResult | None:
+    """
+    Run NSGA-II/III `num_trials` times (different seeds) and keep the best-of-N solution.
+
+    NSGA-II/III are population-based and depend on random initialization, so a single run is
+    not a reliable comparison point against deterministic methods (A*, DFS). Note that
+    total_duration_seconds on the returned result is the SUM across all num_trials runs (the
+    actual cost paid to obtain the best-of-N result), not a single trial's runtime - divide by
+    other_params_dict[OPT_RES_PARAM_NUM_TRIALS] for a per-run figure.
+    """
 
     print_with_timestamp(nsga_config.print_str())
 
@@ -417,63 +446,66 @@ def run_nsga(scenario_file_path: Path,
     # Load a scenario (product and factory)
     example_scenario = ScenarioCore(file_path=scenario_file_path)
 
-    # Start timer
+    # Start timer (covers all trials)
     start_time = time.time()
 
-    # Run NSGA-II or NSGA-III
-    result = run_nsga_algorithm(
-        scenario=example_scenario,
-        algorithm=algorithm_str,
-        nsga_config=nsga_config,
-        seed=42,
-        use_reliability=True,
-        verbose=True,
-        progress_updater=progress_updater
-    )
+    best_cost = float("inf")
+    best_seq = None
+    best_result = None
+    best_trial_index = -1
 
-    if result.F is None or not isinstance(result.F, np.ndarray) or result.F.size == 0:
+    for trial_idx in range(num_trials):
+
+        progress_updater.text = f"Running {algorithm_str} trial {trial_idx + 1}/{num_trials}"
+        progress_updater.percentage = int(100 * trial_idx / num_trials)
+
+        result = run_nsga_algorithm(
+            scenario=example_scenario,
+            algorithm=algorithm_str,
+            nsga_config=nsga_config,
+            seed=base_seed + trial_idx,
+            use_reliability=True,
+            verbose=True,
+            progress_updater=progress_updater
+        )
+
+        if result.F is None or not isinstance(result.F, np.ndarray) or result.F.size == 0:
+            continue
+
+        seq, cost = _best_front_member_by_objective(result, objective_function)
+
+        if cost < best_cost:
+            best_cost = cost
+            best_seq = seq
+            best_result = result
+            best_trial_index = trial_idx
+
+    if best_result is None:
 
         print("No solution exists")
         return None
 
-    else:
+    print_with_timestamp(f"Best of {num_trials} trial(s) for '{algorithm_str}': "
+                         f"trial {best_trial_index + 1}, cost={best_cost:.4f}")
 
-        prefer = "sum"
+    example_scenario.reset()
 
-        if prefer == "time":
-            best_idx = int(np.argmin(result.F[:, 0]))
-        elif prefer == "energy":
-            best_idx = int(np.argmin(result.F[:, 1]))
+    # Re-simulate to get actual actions taken until done
+    _, _, actions_taken = example_scenario.execute_action_idx_sequence(best_seq)
 
-        elif prefer == "objective":
-            values = np.apply_along_axis(objective_search, 1, result.F)
-            best_idx = int(np.argmin(values))
+    hv_nsga = compute_hypervolume(best_result)
 
-        else:
-            best_idx = int(np.argmin(np.sum(result.F, axis=1)))
-
-        best_seq = result.X[best_idx]
-        total_time = result.F[best_idx][0]
-        total_energy = result.F[best_idx][1]
-
-        print_with_timestamp(f"Result of '{algorithm_str}' -> total time: {total_time:.3f}, total energy: {total_energy:.3f}")
-
-        example_scenario.reset()
-
-        # Re-simulate to get actual actions taken until done
-        _, _, actions_taken = example_scenario.execute_action_idx_sequence(best_seq)
-
-        hv_nsga = compute_hypervolume(result)
-
-        return OptimizationResult(action_idx_sequence=list(actions_taken),
-                                  task_result_list=example_scenario.task_result_history,
-                                  total_time=example_scenario.time_sum,
-                                  total_energy=example_scenario.energy_sum,
-                                  sequence_reliability=example_scenario.sequence_reliability,
-                                  objective_function=objective_function,
-                                  other_params_dict={OPT_RES_PARAM_HYPERVOLUME: hv_nsga},
-                                  total_duration_seconds=(time.time() - start_time),
-                                  opt_method=opt_method)
+    return OptimizationResult(action_idx_sequence=list(actions_taken),
+                              task_result_list=example_scenario.task_result_history,
+                              total_time=example_scenario.time_sum,
+                              total_energy=example_scenario.energy_sum,
+                              sequence_reliability=example_scenario.sequence_reliability,
+                              objective_function=objective_function,
+                              other_params_dict={OPT_RES_PARAM_HYPERVOLUME: hv_nsga,
+                                                 OPT_RES_PARAM_NUM_TRIALS: num_trials,
+                                                 OPT_RES_PARAM_BEST_TRIAL_INDEX: best_trial_index},
+                              total_duration_seconds=(time.time() - start_time),
+                              opt_method=opt_method)
 
 
 if __name__ == "__main__":

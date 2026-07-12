@@ -18,14 +18,11 @@ class ProcessVariability:
     def __init__(self,
                  use_normal_distribution: bool = False,
                  uniform_time_variability: float = 0.0,
-                 uniform_energy_variability: float = 0.0,
                  normal_dist_sigma_factor: float = 0.0) -> None:
 
         self._use_normal_distribution = use_normal_distribution
         self._time_variability = uniform_time_variability
-        self._energy_variability = uniform_energy_variability
         self._sigma_factor = normal_dist_sigma_factor
-
 
     def time_with_variability(self, base_time: float) -> float:
 
@@ -42,17 +39,3 @@ class ProcessVariability:
 
     def time_worst_case(self, base_time: float) -> float:
         return base_time * (1 + self._time_variability)
-
-    def energy_with_variability(self, base_energy: float) -> float:
-
-        if self._use_normal_distribution:
-            return random.gauss(mu=base_energy, sigma=(base_energy * self._sigma_factor))
-
-        else:
-            return base_energy * random.uniform(a=(1 - self._energy_variability), b=(1 + self._energy_variability))
-
-    def energy_best_case(self, base_energy: float) -> float:
-        return base_energy * (1 - self._energy_variability)
-
-    def energy_worst_case(self, base_energy: float) -> float:
-        return base_energy * (1 + self._energy_variability)

@@ -1,6 +1,6 @@
 {
-  "scenario_name": "Tiny Test Scenario",
-  "scenario_note": "Minimal scenario used for fast scheduler unit tests",
+  "scenario_name": "Heterogeneous Transporters Test Scenario",
+  "scenario_note": "Two transporters with very different speed/power tradeoffs (fast+high-power vs slow+low-power), used to test that the A* heuristic's transport-cost lower bound stays admissible when transporters are not uniform - it must use whichever transporter minimizes the COMBINED objective cost, not just the fastest one.",
   "variability_configurations": [
     {
       "name": "default",
@@ -45,7 +45,19 @@
     "transporter_machines": [
       {
         "class": "AutomatedGuidedVehicle",
-        "name": "AGV1",
+        "name": "AGV_FAST",
+        "skill_params": {
+          "transport_skill": {
+            "execution_speed": 10.0, "nominal_power_draw": 1000.0, "reliability": 1.0,
+            "variability": "default"
+          }
+        },
+        "from": ["*"],
+        "to": ["*"]
+      },
+      {
+        "class": "AutomatedGuidedVehicle",
+        "name": "AGV_SLOW",
         "skill_params": {
           "transport_skill": {
             "execution_speed": 1.0, "nominal_power_draw": 1.0, "reliability": 1.0,

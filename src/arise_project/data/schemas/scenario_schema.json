@@ -22,9 +22,6 @@
           "uniform_time_variability": {
             "type": "number"
           },
-          "uniform_energy_variability": {
-            "type": "number"
-          },
           "normal_dist_sigma_factor": {
             "type": "number"
           }
@@ -33,7 +30,6 @@
           "name",
           "use_normal_distribution",
           "uniform_time_variability",
-          "uniform_energy_variability",
           "normal_dist_sigma_factor"
         ]
       }

@@ -106,78 +106,6 @@ class Machine(ABC):
     def occupied_product(self) -> Product:
         return self._occupied_product
 
-    def calc_task_energy(self, processing_task: ProcessingTask) -> tuple[float, Skill]:
-
-        resulting_energy_value = 999_999
-        resulting_used_skill = None
-
-        # A task may be completed using different skills, therefore go through all possible skills
-        for possible_skill_type in processing_task.possible_skill_types:
-
-            # Get skill of the skill type
-            skill = self.get_skill_by_type(possible_skill_type)
-
-            # Skip if skill is not offered
-            if skill is None:
-                continue
-
-            # Find skill with the lowest energy consumption
-            if skill.energy_factor < resulting_energy_value:
-                resulting_energy_value = skill.energy_factor
-                resulting_used_skill = skill
-
-                continue
-
-        return resulting_energy_value, resulting_used_skill
-
-    def calc_task_time(self, processing_task: ProcessingTask) -> tuple[float, Skill]:
-
-        resulting_time_value = 999_999
-        resulting_used_skill = None
-
-        # A task may be completed using different skills, therefore go through all possible skills
-        for possible_skill_type in processing_task.possible_skill_types:
-
-            # Get skill of the skill type
-            skill = self.get_skill_by_type(possible_skill_type)
-
-            # Skip if skill is not offered
-            if skill is None:
-                continue
-
-            # Find skill with the lowest time consumption
-            if skill.energy_factor < resulting_time_value:
-                resulting_time_value = skill.time_factor
-                resulting_used_skill = skill
-
-                continue
-
-        return resulting_time_value, resulting_used_skill
-
-    def calc_task_reliability(self, processing_task: ProcessingTask) -> tuple[float, Skill]:
-
-        resulting_reliability_value = 0
-        resulting_used_skill = None
-
-        # A task may be completed using different skills, therefore go through all possible skills
-        for possible_skill_type in processing_task.possible_skill_types:
-
-            # Get skill of the skill type
-            skill = self.get_skill_by_type(possible_skill_type)
-
-            # Skip if skill is not offered
-            if skill is None:
-                continue
-
-            # Find skill with the highest reliability
-            if skill.energy_factor > resulting_reliability_value:
-                resulting_reliability_value = skill.reliability
-                resulting_used_skill = skill
-
-                continue
-
-        return resulting_reliability_value, resulting_used_skill
-
     def get_skill_by_type(self, skill_type: type[Skill]) -> Skill | None:
         """
         Find a skill object of the provided type
@@ -355,7 +283,7 @@ class DrillingMachine(ProcessingMachine):
 
         # In case no skill is provided, use the default skill parameters
         if drilling_skill is None:
-            drilling_skill = DrillingSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            drilling_skill = DrillingSkill(execution_speed=3.0, nominal_power_draw=500.0, reliability=1.0)
 
         super().__init__(name=name, unique_id=unique_id, skill_set={drilling_skill}, x=x, y=y)
 
@@ -378,7 +306,7 @@ class MillingMachine(ProcessingMachine):
 
         # In case no skill is provided, use the default skill parameters
         if milling_skill is None:
-            milling_skill = MillingSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            milling_skill = MillingSkill(execution_speed=2.0, nominal_power_draw=1200.0, reliability=1.0)
 
         super().__init__(name=name, unique_id=unique_id, skill_set={milling_skill}, x=x, y=y)
 
@@ -401,7 +329,7 @@ class CuttingMachine(ProcessingMachine):
 
         # In case no skill is provided, use the default skill parameters
         if cutting_skill is None:
-            cutting_skill = CuttingSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            cutting_skill = CuttingSkill(execution_speed=8.0, nominal_power_draw=3000.0, reliability=1.0)
 
         super().__init__(name=name, unique_id=unique_id, skill_set={cutting_skill}, x=x, y=y)
 
@@ -415,7 +343,7 @@ class TransporterMachine(Machine):
 
         # In case no skill is provided, use the default skill parameters
         if transport_skill is None:
-            transport_skill = TransportSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            transport_skill = TransportSkill(execution_speed=1.0, nominal_power_draw=300.0, reliability=1.0)
 
         super().__init__(name=name, unique_id=unique_id, skill_set={transport_skill})
 
@@ -540,11 +468,11 @@ class StorageMachine(StationaryMachine):
 
         # In case no skill is provided, use the default skill parameters
         if store_skill is None:
-            store_skill = StoreSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            store_skill = StoreSkill(execution_speed=1.0, nominal_power_draw=200.0, reliability=1.0)
 
         # In case no skill is provided, use the default skill parameters
         if retrieve_skill is None:
-            retrieve_skill = RetrieveSkill(time_factor=1.0, energy_factor=1.0, reliability=1.0)
+            retrieve_skill = RetrieveSkill(execution_speed=1.0, nominal_power_draw=200.0, reliability=1.0)
 
         super().__init__(name=name, unique_id=unique_id, skill_set={store_skill, retrieve_skill}, x=x, y=y)
 

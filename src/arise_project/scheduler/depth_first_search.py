@@ -20,6 +20,7 @@ from typing import Iterable
 
 from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
 from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.cost_normalization import compute_cost_scales
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.optimization_result import OptimizationResult
 from src.arise_project.tools.output_timestamp import print_with_timestamp
@@ -207,9 +208,15 @@ def run_iddfs(scenario_file_path: Path, objective_function: ObjectiveFunction, o
 
 if __name__ == '__main__':
 
+    time_scale, energy_scale, reliability_scale = compute_cost_scales(
+        ScenarioCore(file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, reset_class=True))
+
     objective_function = ObjectiveFunction(time_weight=1/3,
                                            energy_weight=1/3,
-                                           reliability_weight=1/3)
+                                           reliability_weight=1/3,
+                                           time_scale=time_scale,
+                                           energy_scale=energy_scale,
+                                           reliability_scale=reliability_scale)
 
     run_iddfs(scenario_file_path=FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH,
               objective_function=objective_function,

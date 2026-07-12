@@ -17,20 +17,26 @@ from src.arise_project.model.variability import ProcessVariability
 
 class Skill(ABC):
     """
-    Abstract class defining an abstract skill
+    Abstract class defining an abstract skill.
+
+    execution_speed: rate at which the skill advances through its task's geometric quantity, in
+    units-of-that-quantity per second (e.g. mm/s for a processing task's radius/length, m/s for a
+    transport task's distance). Task time is computed as geometry / execution_speed.
+    nominal_power_draw: average electrical power drawn while actively executing the task, in Watts.
+    Energy is derived as nominal_power_draw * time, not tracked as an independent quantity.
     """
 
     # Class instantiation counter for unique id generation (not used in abstract class)
     _unique_id_ctr: int = 0
     _ABBREVIATION = "XX"
 
-    def __init__(self, unique_id: str, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, unique_id: str, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         self._unique_id = unique_id
 
-        self._time_factor = time_factor
-        self._energy_factor = energy_factor
+        self._execution_speed = execution_speed
+        self._nominal_power_draw = nominal_power_draw
         self._reliability = reliability
 
         if process_variability is not None:
@@ -82,28 +88,28 @@ class Skill(ABC):
         return self._unique_id
 
     @property
-    def time_factor(self) -> float:
-        return self._time_factor
+    def execution_speed(self) -> float:
+        return self._execution_speed
 
-    @time_factor.setter
-    def time_factor(self, value: float) -> None:
+    @execution_speed.setter
+    def execution_speed(self, value: float) -> None:
 
         if value <= 0:
-            raise ValueError("Time factor must be positive.")
+            raise ValueError("Execution speed must be positive.")
 
-        self._time_factor = value
+        self._execution_speed = value
 
     @property
-    def energy_factor(self) -> float:
-        return self._energy_factor
+    def nominal_power_draw(self) -> float:
+        return self._nominal_power_draw
 
-    @energy_factor.setter
-    def energy_factor(self, value: float) -> None:
+    @nominal_power_draw.setter
+    def nominal_power_draw(self, value: float) -> None:
 
         if value <= 0:
-            raise ValueError("Energy factor must be positive.")
+            raise ValueError("Nominal power draw must be positive.")
 
-        self._energy_factor = value
+        self._nominal_power_draw = value
 
     @property
     def reliability(self) -> float:
@@ -127,10 +133,10 @@ class Skill(ABC):
 
 class ProcessingSkill(Skill):
 
-    def __init__(self, unique_id: str, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, unique_id: str, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -143,13 +149,13 @@ class DrillingSkill(ProcessingSkill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "DS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = DrillingSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -162,13 +168,13 @@ class MillingSkill(ProcessingSkill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "MS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = MillingSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -181,13 +187,13 @@ class CuttingSkill(ProcessingSkill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "CS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = CuttingSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -201,13 +207,13 @@ class TransportSkill(Skill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "TS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = TransportSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -221,13 +227,13 @@ class StoreSkill(Skill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "SS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = StoreSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)
 
 
@@ -241,11 +247,11 @@ class RetrieveSkill(Skill):
     _unique_id_ctr: int = 0
     _ABBREVIATION = "RS"
 
-    def __init__(self, time_factor: float = 1.0, energy_factor: float = 1.0,
+    def __init__(self, execution_speed: float = 1.0, nominal_power_draw: float = 1.0,
                  reliability: float = 1.0, process_variability: ProcessVariability = None) -> None:
 
         # Generate a unique identifier for this specific class using the class abbreviation
         unique_id = RetrieveSkill._generate_unique_id()
 
-        super().__init__(unique_id=unique_id, time_factor=time_factor, energy_factor=energy_factor,
+        super().__init__(unique_id=unique_id, execution_speed=execution_speed, nominal_power_draw=nominal_power_draw,
                          reliability=reliability, process_variability=process_variability)

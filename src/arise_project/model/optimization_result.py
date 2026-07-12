@@ -29,6 +29,7 @@ from src.arise_project.model.objective import ObjectiveFunction
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.task_results import TaskResult
 from src.arise_project.tools.output_timestamp import print_with_timestamp
+from src.arise_project.tools.energy_format import joules_to_wh
 
 OPTIMIZATION_RESULT_FILE_NAME_PKL = {OptimizationMethod.OPT_A_STAR: FILE_NAME_OPT_RESULT_A_STAR_PKL,
                                      OptimizationMethod.OPT_DIJKSTRA: FILE_NAME_OPT_RESULT_DIJKSTRA_PKL,
@@ -55,8 +56,8 @@ COL_OPT_RES_TASK = "Task"
 COL_OPT_RES_MACHINE = "Machine"
 COL_OPT_RES_SKILL = "Skill"
 COL_OPT_RES_SKILL_TYPE = "SkillType"
-COL_OPT_RES_TIME = "Time"
-COL_OPT_RES_ENERGY = "Energy"
+COL_OPT_RES_TIME = "Time (s)"
+COL_OPT_RES_ENERGY = "Energy (Wh)"
 COL_OPT_RES_RELIABILITY = "Reliability"
 COL_OPT_RES_ACTION_IDX = "Action"
 COL_OPT_RES_NOTE = "Note"
@@ -192,8 +193,8 @@ class OptimizationResult:
                                   COL_OPT_RES_MACHINE: task_result.machine.unique_id,
                                   COL_OPT_RES_SKILL: f"{task_result.skill.unique_id}",
                                   COL_OPT_RES_SKILL_TYPE: task_result.skill.type_name(),
-                                  COL_OPT_RES_TIME: task_result.total_time,
-                                  COL_OPT_RES_ENERGY: task_result.total_energy,
+                                  COL_OPT_RES_TIME: round(task_result.total_time, 3),
+                                  COL_OPT_RES_ENERGY: round(joules_to_wh(task_result.total_energy), 3),
                                   COL_OPT_RES_RELIABILITY: task_result.skill.reliability,
                                   COL_OPT_RES_ACTION_IDX: self._action_idx_sequence[idx],
                                   COL_OPT_RES_NOTE: task_result.task.get_description_short()}

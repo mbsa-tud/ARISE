@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.arise_project.model.objective import ObjectiveFunction
 from src.arise_project.model.scenario import ScenarioCore
 from src.arise_project.scheduler.factory_gym_env import FactoryEnv
 
@@ -14,7 +15,8 @@ TINY_SCENARIO_PATH = Path(__file__).resolve().parents[2] / "fixtures" / "tiny_sc
 
 def _make_env() -> FactoryEnv:
     scenario = ScenarioCore(file_path=TINY_SCENARIO_PATH, reset_class=True)
-    return FactoryEnv(scenario=scenario)
+    objective_function = ObjectiveFunction(time_weight=1 / 3, energy_weight=1 / 3, reliability_weight=1 / 3)
+    return FactoryEnv(scenario=scenario, objective_function=objective_function)
 
 
 def test_spaces_match_action_catalog_size():
@@ -41,25 +43,29 @@ def test_invalid_action_is_penalized_without_changing_scenario_state():
 
     obs, reward, terminated, truncated, info = env.step(0)
 
-    assert reward == pytest.approx(-15.0)
+    assert reward == pytest.approx(-1.0)
     assert terminated is False
     assert info["invalid_action"] is True
     assert env.scenario.step_count == 0
 
 
 def test_golden_path_reaches_termination_with_expected_rewards():
+    """
+    Reward is -(change in normalized objective cost) plus fixed completion bonuses, so summing the
+    cost component alone over an episode telescopes to -total_cost of the final schedule.
+    """
 
     env = _make_env()
     env.reset()
 
     _, reward, terminated, _, _ = env.step(1)
-    assert reward == pytest.approx(-2.0)
+    assert reward == pytest.approx(-2 / 3)
     assert terminated is False
 
     _, reward, terminated, _, _ = env.step(0)
-    assert reward == pytest.approx(246.0)
+    assert reward == pytest.approx(7 / 6)
     assert terminated is False
 
     _, reward, terminated, _, _ = env.step(2)
-    assert reward == pytest.approx(1798.0)
+    assert reward == pytest.approx(52 / 3)
     assert terminated is True

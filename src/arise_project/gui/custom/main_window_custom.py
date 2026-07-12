@@ -42,6 +42,8 @@ from src.arise_project.model.machines import AutomatedGuidedVehicle, ConveyorBel
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.optimization_result import OptimizationResult
 from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.cost_normalization import compute_cost_scales
+from src.arise_project.tools.energy_format import joules_to_wh, joules_to_kwh
 from src.arise_project.scheduler.a_star_search import astar_search, OPT_RES_PARAM_EXPANSIONS
 from src.arise_project.scheduler.depth_first_search import run_iddfs, OPT_RES_PARAM_MIN_SOLUTION_DEPTH
 from src.arise_project.scheduler.genetic_algorithms import run_nsga, OPT_RES_PARAM_HYPERVOLUME
@@ -88,15 +90,15 @@ COL_SIM_ACTIONS_TASK = "Task"
 COL_SIM_ACTIONS_MACHINE = "Machine"
 COL_SIM_ACTIONS_SKILL = "Skill"
 COL_SIM_ACTIONS_SKILL_TYPE = "Skill Type"
-COL_SIM_ACTIONS_TIME = "Time"
-COL_SIM_ACTIONS_ENERGY = "Energy"
+COL_SIM_ACTIONS_TIME = "Time (s)"
+COL_SIM_ACTIONS_ENERGY = "Energy (Wh)"
 COL_SIM_ACTIONS_RELIABILITY = "Reliability"
 COL_SIM_ACTIONS_NOTE = "Note"
 
 COL_OPT_RES_COMP_METHOD = "Method"
 COL_OPT_RES_COMP_STEPS = "Steps"
-COL_OPT_RES_COMP_TOTAL_TIME = "Total Time"
-COL_OPT_RES_COMP_TOTAL_ENERGY = "Total Energy"
+COL_OPT_RES_COMP_TOTAL_TIME = "Total Time (s)"
+COL_OPT_RES_COMP_TOTAL_ENERGY = "Total Energy (kWh)"
 COL_OPT_RES_COMP_SEQUENCE_RELIABILITY = "Seq. Reliability"
 COL_OPT_RES_COMP_TOTAL_COST = "Total Cost"
 COL_OPT_RES_COMP_DURATION_SECONDS = "Duration"
@@ -135,19 +137,20 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         if use_reliability:
 
-            time_weight = 1 / 3
-            energy_weight = 1 / 3
-            reliability_weight = 1 / 3
+            self._time_weight = 1 / 3
+            self._energy_weight = 1 / 3
+            self._reliability_weight = 1 / 3
 
         else:
 
-            time_weight = 1 / 2
-            energy_weight = 1 / 2
-            reliability_weight = 0
+            self._time_weight = 1 / 2
+            self._energy_weight = 1 / 2
+            self._reliability_weight = 0
 
-        self._objective_function = ObjectiveFunction(time_weight=time_weight,
-                                                     energy_weight=energy_weight,
-                                                     reliability_weight=reliability_weight)
+        # Scale is recomputed per-scenario in _initialize_scenario(); no scenario is loaded yet here
+        self._objective_function = ObjectiveFunction(time_weight=self._time_weight,
+                                                     energy_weight=self._energy_weight,
+                                                     reliability_weight=self._reliability_weight)
 
         self._thread_manager = ThreadManager()
 
@@ -288,11 +291,21 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
         active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
+        # Cost scale is scenario-specific, so the objective function is rebuilt for whichever
+        # scenario just became active (weights stay fixed, only time_scale/energy_scale change)
+        time_scale, energy_scale, reliability_scale = compute_cost_scales(active_scenario)
+        self._objective_function = ObjectiveFunction(time_weight=self._time_weight,
+                                                     energy_weight=self._energy_weight,
+                                                     reliability_weight=self._reliability_weight,
+                                                     time_scale=time_scale,
+                                                     energy_scale=energy_scale,
+                                                     reliability_scale=reliability_scale)
+
         self._window.setWindowTitle(f"{WINDOW_TITLE_BASIS} - Scenario: {active_scenario.name}")
 
         self.label_sim_total_steps.setText(f"{active_scenario.step_count}")
-        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f}")
-        self.label_sim_total_energy.setText(f"{active_scenario.energy_sum:.2f}")
+        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f} s")
+        self.label_sim_total_energy.setText(f"{joules_to_kwh(active_scenario.energy_sum):.4f} kWh")
         self.label_sim_sequence_reliability.setText(f"{active_scenario.sequence_reliability:.3f}")
         self.label_sim_total_cost.setText(f"{active_scenario.calculate_total_cost(self._objective_function):.2f}")
 
@@ -482,7 +495,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
             if isinstance(machine, ProcessingMachine) or isinstance(machine, StorageMachine):
                 position_param_item = QTreeWidgetItem(params_child_item)
-                position_param_item.setText(0, f"Position: {machine.x:.2f}, {machine.y:.2f}")
+                position_param_item.setText(0, f"Position: {machine.x:.2f} m, {machine.y:.2f} m")
 
             skills_child_item = QTreeWidgetItem(machine_child_item)
             skills_child_item.setText(0, "Skills")
@@ -493,11 +506,11 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 skill_item = QTreeWidgetItem(skills_child_item)
                 skill_item.setText(0, f"{skill.unique_id} [{type(skill).__name__}]")
 
-                time_factor_item = QTreeWidgetItem(skill_item)
-                time_factor_item.setText(0, f"Time factor: {skill.time_factor:.2f}")
+                execution_speed_item = QTreeWidgetItem(skill_item)
+                execution_speed_item.setText(0, f"Execution speed: {skill.execution_speed:.2f}")
 
-                energy_factor_item = QTreeWidgetItem(skill_item)
-                energy_factor_item.setText(0, f"Energy factor: {skill.energy_factor:.2f}")
+                nominal_power_draw_item = QTreeWidgetItem(skill_item)
+                nominal_power_draw_item.setText(0, f"Nominal power draw: {skill.nominal_power_draw:.2f} W")
 
                 reliability_item = QTreeWidgetItem(skill_item)
                 reliability_item.setText(0, f"Reliability: {skill.reliability:.3f}")
@@ -648,10 +661,10 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 specific_action_child_item.setText(0, f"{idx + 1}. {task_result.get_short_name(with_product=True, with_machine=True)}")
 
                 task_result_time_child_item = QTreeWidgetItem(specific_action_child_item)
-                task_result_time_child_item.setText(0, f"Time: {task_result.total_time:.2f}")
+                task_result_time_child_item.setText(0, f"Time: {task_result.total_time:.2f} s")
 
                 task_result_energy_child_item = QTreeWidgetItem(specific_action_child_item)
-                task_result_energy_child_item.setText(0, f"Energy: {task_result.total_energy:.2f}")
+                task_result_energy_child_item.setText(0, f"Energy: {joules_to_wh(task_result.total_energy):.3f} Wh")
 
                 task_result_reliability_child_item = QTreeWidgetItem(specific_action_child_item)
                 task_result_reliability_child_item.setText(0, f"Reliability: {task_result.skill.reliability:.2f}")
@@ -678,7 +691,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                              COL_SIM_ACTIONS_SKILL: f"{task_result.skill.unique_id}",
                              COL_SIM_ACTIONS_SKILL_TYPE: task_result.skill.type_name(),
                              COL_SIM_ACTIONS_TIME: task_result.total_time,
-                             COL_SIM_ACTIONS_ENERGY: task_result.total_energy,
+                             COL_SIM_ACTIONS_ENERGY: joules_to_wh(task_result.total_energy),
                              COL_SIM_ACTIONS_RELIABILITY: task_result.skill.reliability,
                              COL_SIM_ACTIONS_NOTE: task_result.task.get_description_short()}
 
@@ -897,8 +910,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         if reset:
 
             label_total_steps.setText("0")
-            label_total_time.setText("0.00")
-            label_total_energy.setText("0.00")
+            label_total_time.setText("0.00 s")
+            label_total_energy.setText("0.0000 kWh")
             label_total_reliability.setText("1.000")
             label_total_cost.setText("0.00")
             label_total_duration.setText(f"0min 0s")
@@ -935,8 +948,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
             label_total_steps.setText(f"{active_scenario.opt_result_dict[opt_method].steps}")
-            label_total_time.setText(f"{active_scenario.opt_result_dict[opt_method].total_time:.2f}")
-            label_total_energy.setText(f"{active_scenario.opt_result_dict[opt_method].total_energy:.2f}")
+            label_total_time.setText(f"{active_scenario.opt_result_dict[opt_method].total_time:.2f} s")
+            label_total_energy.setText(f"{joules_to_kwh(active_scenario.opt_result_dict[opt_method].total_energy):.4f} kWh")
             label_total_reliability.setText(f"{active_scenario.opt_result_dict[opt_method].sequence_reliability:.3f}")
             label_total_cost.setText(f"{active_scenario.opt_result_dict[opt_method].total_cost:.2f}")
             label_total_duration.setText(f"{duration_formatting(active_scenario.opt_result_dict[opt_method].total_duration_seconds)}")
@@ -998,7 +1011,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             opt_result_comp_data_dict = {COL_OPT_RES_COMP_METHOD: opt_result.opt_method.get_short_name(),
                                          COL_OPT_RES_COMP_STEPS: opt_result.steps,
                                          COL_OPT_RES_COMP_TOTAL_TIME: opt_result.total_time,
-                                         COL_OPT_RES_COMP_TOTAL_ENERGY: opt_result.total_energy,
+                                         COL_OPT_RES_COMP_TOTAL_ENERGY: joules_to_kwh(opt_result.total_energy),
                                          COL_OPT_RES_COMP_SEQUENCE_RELIABILITY: opt_result.sequence_reliability,
                                          COL_OPT_RES_COMP_TOTAL_COST: opt_result.total_cost,
                                          COL_OPT_RES_COMP_DURATION_SECONDS: opt_result.total_duration_seconds}
@@ -1069,9 +1082,11 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 # Set data for sorting
                 item.setData(Qt.ItemDataRole.DisplayRole, opt_comp_df.iat[row, col])
 
-                if ((col_name == COL_OPT_RES_COMP_TOTAL_TIME) or
-                        (col_name == COL_OPT_RES_COMP_TOTAL_ENERGY) or
-                        (col_name == COL_OPT_RES_COMP_TOTAL_COST)):
+                if col_name == COL_OPT_RES_COMP_TOTAL_ENERGY:
+
+                    item.setText(f"{opt_comp_df.iat[row, col]:.4f}")
+
+                elif (col_name == COL_OPT_RES_COMP_TOTAL_TIME) or (col_name == COL_OPT_RES_COMP_TOTAL_COST):
 
                     item.setText(f"{opt_comp_df.iat[row, col]:.2f}")
 
@@ -1238,8 +1253,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
         self.label_sim_total_steps.setText(f"{active_scenario.step_count}")
-        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f}")
-        self.label_sim_total_energy.setText(f"{active_scenario.energy_sum:.2f}")
+        self.label_sim_total_time.setText(f"{active_scenario.time_sum:.2f} s")
+        self.label_sim_total_energy.setText(f"{joules_to_kwh(active_scenario.energy_sum):.4f} kWh")
         self.label_sim_sequence_reliability.setText(f"{active_scenario.sequence_reliability:.3f}")
         self.label_sim_total_cost.setText(f"{active_scenario.calculate_total_cost(self._objective_function):.2f}")
 
@@ -1686,8 +1701,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             print_with_timestamp(f"[A*] Optimal path found: {opt_result.action_idx_sequence}")
 
             print_with_timestamp(f"[A*] cost={opt_result.total_cost:.4f} | "
-                  f"time={opt_result.total_time:.4f} | "
-                  f"energy={opt_result.total_energy:.4f} | "
+                  f"time={opt_result.total_time:.4f}s | "
+                  f"energy={joules_to_kwh(opt_result.total_energy):.4f}kWh | "
                   f"reliability={opt_result.sequence_reliability:.6f} | "
                   f"expansions={opt_result.other_params_dict['expansions']} | "
                   f"elapsed={opt_result.total_duration_seconds:.2f}s\n")
@@ -1720,8 +1735,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             print_with_timestamp(f"[Dijkstra] Optimal path found: {opt_result.action_idx_sequence}")
 
             print_with_timestamp(f"[Dijkstra] cost={opt_result.total_cost:.4f} | "
-                                 f"time={opt_result.total_time:.4f} | "
-                                 f"energy={opt_result.total_energy:.4f} | "
+                                 f"time={opt_result.total_time:.4f}s | "
+                                 f"energy={joules_to_kwh(opt_result.total_energy):.4f}kWh | "
                                  f"reliability={opt_result.sequence_reliability:.6f} | "
                                  f"expansions={opt_result.other_params_dict['expansions']} | "
                                  f"elapsed={opt_result.total_duration_seconds:.2f}s\n")

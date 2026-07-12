@@ -1,6 +1,6 @@
 {
-  "scenario_name": "Tiny Test Scenario",
-  "scenario_note": "Minimal scenario used for fast scheduler unit tests",
+  "scenario_name": "Small Branching Test Scenario",
+  "scenario_note": "Two independent drilling tasks with two candidate drilling machines each, used to exercise A* heuristic guidance (enough branching for expansion counts to differ with/without the heuristic)",
   "variability_configurations": [
     {
       "name": "default",
@@ -40,6 +40,30 @@
             "variability": "default"
           }
         }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM2",
+        "x": 2.0,
+        "y": 0.0,
+        "skill_params": {
+          "drilling_skill": {
+            "execution_speed": 2.0, "nominal_power_draw": 1.0, "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM3",
+        "x": 3.0,
+        "y": 0.0,
+        "skill_params": {
+          "drilling_skill": {
+            "execution_speed": 1.5, "nominal_power_draw": 1.0, "reliability": 1.0,
+            "variability": "default"
+          }
+        }
       }
     ],
     "transporter_machines": [
@@ -68,7 +92,19 @@
         "class": "DrillingTask",
         "name": "DT1",
         "preconditions": [],
-        "params": {"center_x": 5, "center_y": 5, "radius": 2}
+        "params": {"center_x": 3, "center_y": 3, "radius": 2}
+      },
+      {
+        "class": "DrillingTask",
+        "name": "DT2",
+        "preconditions": [],
+        "params": {"center_x": 6, "center_y": 6, "radius": 3}
+      },
+      {
+        "class": "DrillingTask",
+        "name": "DT3",
+        "preconditions": [],
+        "params": {"center_x": 4, "center_y": 4, "radius": 2.5}
       }
     ]
   }

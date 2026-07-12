@@ -172,7 +172,6 @@ class ScenarioCore:
             variability_config_by_name_dict[name] = ProcessVariability(
                 use_normal_distribution=config["use_normal_distribution"],
                 uniform_time_variability=config["uniform_time_variability"],
-                uniform_energy_variability=config["uniform_energy_variability"],
                 normal_dist_sigma_factor=config["normal_dist_sigma_factor"])
 
         return variability_config_by_name_dict
@@ -215,15 +214,15 @@ class ScenarioCore:
             if stm["class"] == "StorageMachine":
 
                 # Create skill with the machine's skill-specific parameters
-                store_skill = StoreSkill(time_factor=stm["skill_params"]["store_skill"]["time_factor"],
-                                         energy_factor=stm["skill_params"]["store_skill"]["energy_factor"],
+                store_skill = StoreSkill(execution_speed=stm["skill_params"]["store_skill"]["execution_speed"],
+                                         nominal_power_draw=stm["skill_params"]["store_skill"]["nominal_power_draw"],
                                          reliability=stm["skill_params"]["store_skill"]["reliability"],
                                          process_variability=self._resolve_variability(
                                              variability_config_by_name_dict, stm["skill_params"]["store_skill"]["variability"]))
 
                 # Create skill with the machine's skill-specific parameters
-                retrieve_skill = RetrieveSkill(time_factor=stm["skill_params"]["retrieve_skill"]["time_factor"],
-                                               energy_factor=stm["skill_params"]["retrieve_skill"]["energy_factor"],
+                retrieve_skill = RetrieveSkill(execution_speed=stm["skill_params"]["retrieve_skill"]["execution_speed"],
+                                               nominal_power_draw=stm["skill_params"]["retrieve_skill"]["nominal_power_draw"],
                                                reliability=stm["skill_params"]["retrieve_skill"]["reliability"],
                                                process_variability=self._resolve_variability(
                                                    variability_config_by_name_dict, stm["skill_params"]["retrieve_skill"]["variability"]))
@@ -240,8 +239,8 @@ class ScenarioCore:
             if prm["class"] == "DrillingMachine":
 
                 # Create skill with the machine's skill-specific parameters
-                drilling_skill = DrillingSkill(time_factor=prm["skill_params"]["drilling_skill"]["time_factor"],
-                                               energy_factor=prm["skill_params"]["drilling_skill"]["energy_factor"],
+                drilling_skill = DrillingSkill(execution_speed=prm["skill_params"]["drilling_skill"]["execution_speed"],
+                                               nominal_power_draw=prm["skill_params"]["drilling_skill"]["nominal_power_draw"],
                                                reliability=prm["skill_params"]["drilling_skill"]["reliability"],
                                                process_variability=self._resolve_variability(
                                                    variability_config_by_name_dict, prm["skill_params"]["drilling_skill"]["variability"]))
@@ -255,8 +254,8 @@ class ScenarioCore:
             elif prm["class"] == "CuttingMachine":
 
                 # Create skill with the machine's skill-specific parameters
-                cutting_skill = CuttingSkill(time_factor=prm["skill_params"]["cutting_skill"]["time_factor"],
-                                             energy_factor=prm["skill_params"]["cutting_skill"]["energy_factor"],
+                cutting_skill = CuttingSkill(execution_speed=prm["skill_params"]["cutting_skill"]["execution_speed"],
+                                             nominal_power_draw=prm["skill_params"]["cutting_skill"]["nominal_power_draw"],
                                              reliability=prm["skill_params"]["cutting_skill"]["reliability"],
                                              process_variability=self._resolve_variability(
                                                  variability_config_by_name_dict, prm["skill_params"]["cutting_skill"]["variability"]))
@@ -270,8 +269,8 @@ class ScenarioCore:
             elif prm["class"] == "MillingMachine":
 
                 # Create skill with the machine's skill-specific parameters
-                milling_skill = MillingSkill(time_factor=prm["skill_params"]["milling_skill"]["time_factor"],
-                                             energy_factor=prm["skill_params"]["milling_skill"]["energy_factor"],
+                milling_skill = MillingSkill(execution_speed=prm["skill_params"]["milling_skill"]["execution_speed"],
+                                             nominal_power_draw=prm["skill_params"]["milling_skill"]["nominal_power_draw"],
                                              reliability=prm["skill_params"]["milling_skill"]["reliability"],
                                              process_variability=self._resolve_variability(
                                                  variability_config_by_name_dict, prm["skill_params"]["milling_skill"]["variability"]))
@@ -305,8 +304,8 @@ class ScenarioCore:
             if tpm["class"] == "AutomatedGuidedVehicle":
 
                 # Create skill with the machine's skill-specific parameters
-                transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
-                                                 energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
+                transport_skill = TransportSkill(execution_speed=tpm["skill_params"]["transport_skill"]["execution_speed"],
+                                                 nominal_power_draw=tpm["skill_params"]["transport_skill"]["nominal_power_draw"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
                                                  process_variability=self._resolve_variability(
                                                      variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))
@@ -321,8 +320,8 @@ class ScenarioCore:
             elif tpm["class"] == "ThreeAxesRobot":
 
                 # Create skill with the machine's skill-specific parameters
-                transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
-                                                 energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
+                transport_skill = TransportSkill(execution_speed=tpm["skill_params"]["transport_skill"]["execution_speed"],
+                                                 nominal_power_draw=tpm["skill_params"]["transport_skill"]["nominal_power_draw"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
                                                   process_variability=self._resolve_variability(
                                                       variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))
@@ -337,8 +336,8 @@ class ScenarioCore:
             elif tpm["class"] == "ConveyorBelt":
 
                 # Create skill with the machine's skill-specific parameters
-                transport_skill = TransportSkill(time_factor=tpm["skill_params"]["transport_skill"]["time_factor"],
-                                                 energy_factor=tpm["skill_params"]["transport_skill"]["energy_factor"],
+                transport_skill = TransportSkill(execution_speed=tpm["skill_params"]["transport_skill"]["execution_speed"],
+                                                 nominal_power_draw=tpm["skill_params"]["transport_skill"]["nominal_power_draw"],
                                                  reliability=tpm["skill_params"]["transport_skill"]["reliability"],
                                                  process_variability=self._resolve_variability(
                                                      variability_config_by_name_dict, tpm["skill_params"]["transport_skill"]["variability"]))

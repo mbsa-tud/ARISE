@@ -28,6 +28,7 @@ from jsonschema import validate, ValidationError
 
 from src.arise_project.gui.custom.pyqt_progress_updater import DummyProgressUpdater
 from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.cost_normalization import compute_cost_scales
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.optimization_result import OptimizationResult
 from src.arise_project.tools.duration_format import duration_formatting
@@ -89,13 +90,18 @@ def run_training(scenario_file_path: Path) -> float:
     # Load a scenario (product and factory)
     scenario = ScenarioCore(file_path=scenario_file_path)
 
+    time_scale, energy_scale, reliability_scale = compute_cost_scales(scenario)
+    objective_function = ObjectiveFunction(time_weight=dqn_config_dict["environment"]["time_weight"],
+                                           energy_weight=dqn_config_dict["environment"]["energy_weight"],
+                                           reliability_weight=dqn_config_dict["environment"]["reliability_weight"],
+                                           time_scale=time_scale, energy_scale=energy_scale,
+                                           reliability_scale=reliability_scale)
+
     # Build the training environment based on the DQN configuration file
     train_env = FactoryEnv(scenario,
-                           alpha=dqn_config_dict["environment"]["alpha"],
-                           beta=dqn_config_dict["environment"]["beta"],
+                           objective_function=objective_function,
                            max_steps=dqn_config_dict["environment"]["max_steps"],
-                           seed=dqn_config_dict["environment"]["training_seed"],
-                           use_reliability=dqn_config_dict["environment"]["use_reliability"])
+                           seed=dqn_config_dict["environment"]["training_seed"])
 
     check_env(train_env, warn=True)
     train_env = Monitor(train_env)
@@ -105,11 +111,9 @@ def run_training(scenario_file_path: Path) -> float:
 
     # Build the evaluation environment based on the DQN configuration file
     eval_env = FactoryEnv(eval_scenario,
-                          alpha=dqn_config_dict["environment"]["alpha"],
-                          beta=dqn_config_dict["environment"]["beta"],
+                          objective_function=objective_function,
                           max_steps=dqn_config_dict["environment"]["max_steps"],
-                          seed=dqn_config_dict["environment"]["evaluation_seed"],
-                          use_reliability=dqn_config_dict["environment"]["use_reliability"])
+                          seed=dqn_config_dict["environment"]["evaluation_seed"])
 
     check_env(eval_env, warn=True)
     eval_env = Monitor(eval_env)
@@ -211,12 +215,17 @@ def run_inference(scenario_file_path: Path, objective_function: ObjectiveFunctio
 
     scenario = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 
+    time_scale, energy_scale, reliability_scale = compute_cost_scales(scenario)
+    objective_function = ObjectiveFunction(time_weight=dqn_config_dict["environment"]["time_weight"],
+                                           energy_weight=dqn_config_dict["environment"]["energy_weight"],
+                                           reliability_weight=dqn_config_dict["environment"]["reliability_weight"],
+                                           time_scale=time_scale, energy_scale=energy_scale,
+                                           reliability_scale=reliability_scale)
+
     original_env = FactoryEnv(scenario=scenario,
-                              alpha=dqn_config_dict["environment"]["alpha"],
-                              beta=dqn_config_dict["environment"]["beta"],
+                              objective_function=objective_function,
                               max_steps=dqn_config_dict["environment"]["max_steps"],
                               seed=dqn_config_dict["environment"]["inference_seed"],
-                              use_reliability=dqn_config_dict["environment"]["use_reliability"],
                               output_action_state=dqn_config_dict["environment"]["output_action_state"])
 
     env = Monitor(original_env)

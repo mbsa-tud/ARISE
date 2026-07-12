@@ -15,28 +15,35 @@ import gymnasium as gym
 import numpy as np
 from typing import Any
 
+from src.arise_project.model.objective import ObjectiveFunction
 from src.arise_project.model.scenario import ScenarioCore
 from src.arise_project.model.tasks import ProcessingTask
+
+# Reward constants, rescaled to match the normalized (roughly O(1) per completed schedule) objective
+# function cost instead of the raw, unnormalized time/energy costs they were originally tuned against
+INVALID_ACTION_PENALTY = -1.0
+PROCESSING_TASK_BONUS = 2.5
+PRODUCT_DONE_BONUS = 6.0
+ALL_PRODUCTS_DONE_BONUS = 12.0
 
 
 class FactoryEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, scenario: ScenarioCore, alpha: float = 1.0, beta: float = 1.0, max_steps: int = 200,
-                 seed: int = 0, use_reliability: bool = False, output_action_state: bool = False):
+    def __init__(self, scenario: ScenarioCore, objective_function: ObjectiveFunction, max_steps: int = 200,
+                 seed: int = 0, output_action_state: bool = False):
 
         super().__init__()
 
         self.scenario = scenario
-        self.alpha = alpha
-        self.beta = beta
+        self.objective_function = objective_function
         self.rng = np.random.RandomState(seed)
         self._max_steps = max_steps
-        self._use_reliability = use_reliability
         self.output_action_state = output_action_state
 
         self._step_count = 0
+        self._prev_cost = 0.0
 
         # Catalogs and fixed sizes
         self.products = self.scenario.get_sorted_product_list()
@@ -104,6 +111,7 @@ class FactoryEnv(gym.Env):
             self.rng.seed(seed)
 
         self._step_count = 0
+        self._prev_cost = 0.0
         self.scenario.reset()
 
         obs = self._encode_state()
@@ -129,10 +137,7 @@ class FactoryEnv(gym.Env):
 
         if action_mask[action_idx] == 0:
 
-            # Strong penalty for invalid action
-            penalty = -15.0
-
-            return obs, penalty, False, truncated, {"invalid_action": True}
+            return obs, INVALID_ACTION_PENALTY, False, truncated, {"invalid_action": True}
 
         # Execute the action by its index in the action catalog
         task_result, product_done, all_products_done = self.scenario.step_by_action_idx(action_idx)
@@ -140,35 +145,34 @@ class FactoryEnv(gym.Env):
         # This shouldn't happen due to masking, but nevertheless handle it
         if task_result is None:
 
-            # Strong penalty for invalid action
-            penalty = -15.0
+            return obs, INVALID_ACTION_PENALTY, False, truncated, {"invalid_action": True}
 
-            return obs, penalty, False, truncated, {"invalid_action": True}
+        # Reward is the negative *change* in the same (normalized) objective cost used by every other
+        # scheduling method, so summing rewards over an episode telescopes to -total_cost of the final
+        # schedule. Uses the scenario's running cumulative sums, not this single action's raw values,
+        # so reliability correctly reflects the compounding sequence reliability, not just this skill's.
+        current_cost = self.objective_function(time_cost=self.scenario.time_sum,
+                                               energy_cost=self.scenario.energy_sum,
+                                               reliability=self.scenario.sequence_reliability)
 
-        # Reward is based on the negative weighted cost
-        time_cost = task_result.total_time
-        energy_cost = task_result.total_energy
-        reliability = task_result.skill.reliability
-
-        reward = - ((self.alpha * time_cost) + (self.beta * energy_cost))
-
-        if self._use_reliability:
-            reward -= 100.0 * (1 - reliability)
+        reward = -(current_cost - self._prev_cost)
+        self._prev_cost = current_cost
 
         if isinstance(task_result.task, ProcessingTask):
-            reward += 250.0
+            reward += PROCESSING_TASK_BONUS
 
         # Add completion bonus for one product
         if product_done:
-            reward += 600.0
+            reward += PRODUCT_DONE_BONUS
 
         # Add completion bonus for all products
         if all_products_done:
-            reward += 1200.0
+            reward += ALL_PRODUCTS_DONE_BONUS
 
         next_obs = self._encode_state()
 
-        info = {"time_cost": time_cost, "energy_cost": energy_cost, "reliability": reliability}
+        info = {"time_cost": task_result.total_time, "energy_cost": task_result.total_energy,
+               "reliability": task_result.skill.reliability}
 
         return next_obs, reward, all_products_done, truncated, info
 

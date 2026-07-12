@@ -50,23 +50,23 @@
     "environment": {
       "type": "object",
       "properties": {
-        "alpha": { "type": "number" },
-        "beta": { "type": "number" },
+        "time_weight": { "type": "number", "minimum": 0 },
+        "energy_weight": { "type": "number", "minimum": 0 },
+        "reliability_weight": { "type": "number", "minimum": 0 },
         "max_steps": { "type": "integer", "minimum": 1 },
         "training_seed": { "type": "integer" },
         "evaluation_seed": { "type": "integer" },
         "inference_seed": { "type": "integer" },
-        "use_reliability": { "type": "boolean" },
         "output_action_state": { "type": "boolean" }
       },
       "required": [
-        "alpha",
-        "beta",
+        "time_weight",
+        "energy_weight",
+        "reliability_weight",
         "max_steps",
         "training_seed",
         "evaluation_seed",
         "inference_seed",
-        "use_reliability",
         "output_action_state"
       ],
       "additionalProperties": false

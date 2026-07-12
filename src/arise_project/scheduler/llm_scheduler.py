@@ -21,6 +21,7 @@ from src.arise_project.tools.output_timestamp import print_with_timestamp
 from src.arise_project.config.paths import FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, FILE_SCENARIO_JSON_SCHEMA_PATH
 from src.arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater, DummyProgressUpdater
 from src.arise_project.model.objective import ObjectiveFunction
+from src.arise_project.model.cost_normalization import compute_cost_scales
 from src.arise_project.model.optimization_method import OptimizationMethod
 from src.arise_project.model.optimization_result import OptimizationResult
 from src.arise_project.model.scenario import ScenarioCore
@@ -272,10 +273,15 @@ def run_iterative_llm_scheduler(scenario_file_path: Path,
 
     agent = PlannerAgent(client=client, model="gpt-5")
 
+    time_scale, energy_scale, reliability_scale = compute_cost_scales(scn)
+
     # TODO this currently is not considered
     objective_function = ObjectiveFunction(time_weight=1/3,
                                            energy_weight=1/3,
-                                           reliability_weight=1/3)
+                                           reliability_weight=1/3,
+                                           time_scale=time_scale,
+                                           energy_scale=energy_scale,
+                                           reliability_scale=reliability_scale)
 
     opt_result = run_planner(agent=agent, base_prompt=base_prompt_str, objective_function=objective_function, scenario=scn, progress_updater=progress_updater)
 

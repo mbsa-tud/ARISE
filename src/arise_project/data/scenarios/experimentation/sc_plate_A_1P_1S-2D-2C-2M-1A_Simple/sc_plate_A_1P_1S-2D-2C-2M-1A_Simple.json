@@ -6,7 +6,6 @@
       "name": "default",
       "use_normal_distribution": false,
       "uniform_time_variability": 0.0,
-      "uniform_energy_variability": 0.0,
       "normal_dist_sigma_factor": 0.0
     }
   ],
@@ -16,21 +15,20 @@
         "class": "StorageMachine",
         "name": "ST1",
         "x": 0.0,
-        "y": 0.4,
+        "y": 4.0,
         "skill_params": {
           "store_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 1.0,
+            "nominal_power_draw": 200.0,
             "reliability": 1.0,
             "variability": "default"
           },
           "retrieve_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 1.0,
+            "nominal_power_draw": 200.0,
             "reliability": 1.0,
             "variability": "default"
           }
-
         }
       }
     ],
@@ -38,12 +36,12 @@
       {
         "class": "MillingMachine",
         "name": "MM1",
-        "x": 0.2,
-        "y": 0.2,
+        "x": 2.0,
+        "y": 2.0,
         "skill_params": {
           "milling_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 2.0,
+            "nominal_power_draw": 1200.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -52,12 +50,12 @@
       {
         "class": "MillingMachine",
         "name": "MM2",
-        "x": 0.45,
-        "y": 0.2,
+        "x": 4.5,
+        "y": 2.0,
         "skill_params": {
           "milling_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 2.0,
+            "nominal_power_draw": 1200.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -66,12 +64,12 @@
       {
         "class": "CuttingMachine",
         "name": "CM1",
-        "x": 0.7,
-        "y": 0.5,
+        "x": 7.0,
+        "y": 5.0,
         "skill_params": {
           "cutting_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 8.0,
+            "nominal_power_draw": 3000.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -80,12 +78,12 @@
       {
         "class": "CuttingMachine",
         "name": "CM2",
-        "x": 0.7,
-        "y": 0.3,
+        "x": 7.0,
+        "y": 3.0,
         "skill_params": {
           "cutting_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 8.0,
+            "nominal_power_draw": 3000.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -94,12 +92,12 @@
       {
         "class": "DrillingMachine",
         "name": "DM1",
-        "x": 0.2,
-        "y": 0.6,
+        "x": 2.0,
+        "y": 6.0,
         "skill_params": {
           "drilling_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 3.0,
+            "nominal_power_draw": 500.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -108,12 +106,12 @@
       {
         "class": "DrillingMachine",
         "name": "DM2",
-        "x": 0.45,
-        "y": 0.6,
+        "x": 4.5,
+        "y": 6.0,
         "skill_params": {
           "drilling_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 3.0,
+            "nominal_power_draw": 500.0,
             "reliability": 1.0,
             "variability": "default"
           }
@@ -126,14 +124,18 @@
         "name": "AGV1",
         "skill_params": {
           "transport_skill": {
-            "time_factor": 1.0,
-            "energy_factor": 1.0,
+            "execution_speed": 1.0,
+            "nominal_power_draw": 300.0,
             "reliability": 1.0,
             "variability": "default"
           }
         },
-        "from": ["*"],
-        "to": ["*"]
+        "from": [
+          "*"
+        ],
+        "to": [
+          "*"
+        ]
       }
     ]
   },
@@ -171,7 +173,9 @@
         "class": "CuttingTask",
         "name": "CT1",
         "preconditions": [
-          {"task_name": "DT1"}
+          {
+            "task_name": "DT1"
+          }
         ],
         "params": {
           "start_x": 30,

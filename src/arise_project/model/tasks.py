@@ -190,9 +190,8 @@ class DrillingTask(ProcessingTask):
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # Calculate the time and energy cost specifically for this task
-        time_cost = selected_skill.time_factor * self._radius
-        energy_cost = selected_skill.energy_factor * self._radius
+        # Calculate the time cost specifically for this task (geometry / speed = time)
+        time_cost = self._radius / selected_skill.execution_speed
 
         # Introduce noise based on process variability defined individually for each skill (noise sim)
         match mode:
@@ -200,21 +199,21 @@ class DrillingTask(ProcessingTask):
             case ExecutionMode.RANDOM:
 
                 total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
 
             case ExecutionMode.BEST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
 
             case ExecutionMode.WORST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
 
             case _:
 
                 raise ValueError("Unknown execution mode.")
+
+        # Energy is derived from power draw over the (already noisy) time actually spent, not its own factor
+        total_energy_cost = selected_skill.nominal_power_draw * total_time_cost
 
         rounded_total_time_cost = round(total_time_cost, 3)
         rounded_total_energy_cost = round(total_energy_cost, 3)
@@ -274,9 +273,8 @@ class MillingTask(ProcessingTask):
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # Calculate the time and energy cost specifically for this task
-        time_cost = selected_skill.time_factor * self._radius
-        energy_cost = selected_skill.energy_factor * self._radius
+        # Calculate the time cost specifically for this task (geometry / speed = time)
+        time_cost = self._radius / selected_skill.execution_speed
 
         # Introduce noise based on process variability defined individually for each skill (noise sim)
         match mode:
@@ -284,21 +282,21 @@ class MillingTask(ProcessingTask):
             case ExecutionMode.RANDOM:
 
                 total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
 
             case ExecutionMode.BEST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
 
             case ExecutionMode.WORST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
 
             case _:
 
                 raise ValueError("Unknown execution mode.")
+
+        # Energy is derived from power draw over the (already noisy) time actually spent, not its own factor
+        total_energy_cost = selected_skill.nominal_power_draw * total_time_cost
 
         rounded_total_time_cost = round(total_time_cost, 3)
         rounded_total_energy_cost = round(total_energy_cost, 3)
@@ -368,9 +366,8 @@ class CuttingTask(ProcessingTask):
         if type(selected_skill) not in self._possible_skill_types:
             raise ValueError(f"Skill {selected_skill.unique_id} can't be used for processing task {self._unique_id}.")
 
-        # Calculate the time and energy cost specifically for this task
-        time_cost = selected_skill.time_factor * self._total_length
-        energy_cost = selected_skill.energy_factor * self._total_length
+        # Calculate the time cost specifically for this task (geometry / speed = time)
+        time_cost = self._total_length / selected_skill.execution_speed
 
         # Introduce noise based on process variability defined individually for each skill (noise sim)
         match mode:
@@ -378,21 +375,21 @@ class CuttingTask(ProcessingTask):
             case ExecutionMode.RANDOM:
 
                 total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
 
             case ExecutionMode.BEST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
 
             case ExecutionMode.WORST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
 
             case _:
 
                 raise ValueError("Unknown execution mode.")
+
+        # Energy is derived from power draw over the (already noisy) time actually spent, not its own factor
+        total_energy_cost = selected_skill.nominal_power_draw * total_time_cost
 
         rounded_total_time_cost = round(total_time_cost, 3)
         rounded_total_energy_cost = round(total_energy_cost, 3)
@@ -449,9 +446,8 @@ class TransportTask(Task):
         if not isinstance(selected_skill, TransportSkill):
             raise ValueError(f"Skill can't be used for transport task {self._unique_id}.")
 
-        # Calculate the time and energy cost specifically for this task
-        time_cost = selected_skill.time_factor * self._distance
-        energy_cost = selected_skill.energy_factor * self._distance
+        # Calculate the time cost specifically for this task (geometry / speed = time)
+        time_cost = self._distance / selected_skill.execution_speed
 
         # Introduce noise based on process variability defined individually for each skill (noise sim)
         match mode:
@@ -459,21 +455,21 @@ class TransportTask(Task):
             case ExecutionMode.RANDOM:
 
                 total_time_cost = selected_skill.process_variability.time_with_variability(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_with_variability(base_energy=energy_cost)
 
             case ExecutionMode.BEST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_best_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_best_case(base_energy=energy_cost)
 
             case ExecutionMode.WORST_CASE:
 
                 total_time_cost = selected_skill.process_variability.time_worst_case(base_time=time_cost)
-                total_energy_cost = selected_skill.process_variability.energy_worst_case(base_energy=energy_cost)
 
             case _:
 
                 raise ValueError("Unknown execution mode.")
+
+        # Energy is derived from power draw over the (already noisy) time actually spent, not its own factor
+        total_energy_cost = selected_skill.nominal_power_draw * total_time_cost
 
         rounded_total_time_cost = round(total_time_cost, 3)
         rounded_total_energy_cost = round(total_energy_cost, 3)
