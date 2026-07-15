@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module defining the main window GUI based on a class generated from a '.ui' file
 
 Author: Patrick Fischer
@@ -21,7 +42,7 @@ import pandas as pd
 from PyQt6 import QtGui
 from PyQt6.QtGui import QBrush, QColor, QPixmap
 from PyQt6.QtWidgets import QTreeWidgetItem, QGroupBox, QVBoxLayout, QTreeWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QFileDialog
+    QHeaderView, QFileDialog, QDialog
 from PyQt6.QtCore import Qt
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -32,9 +53,10 @@ from matplotlib.figure import Figure
 from src.arise_project.model.nsga_config import NSGAConfig
 from src.arise_project.scheduler.llm_scheduler import run_iterative_llm_scheduler, OPT_RES_PARAM_TOTAL_TOKEN_COUNT, \
     OPT_RES_PARAM_AVG_RESPONSE_TIME
-from src.arise_project.gui.custom.plots import AnalysisPlot
+from src.arise_project.gui.custom.plots import AnalysisPlot, COL_TASKS, COL_A_STAR_TIME, COL_NSGA2_TIME, \
+    COL_RL_DQN_TIME, COL_NSGA2_RATIO, COL_RL_DQN_RATIO
 from src.arise_project.model.product import Plate
-from src.arise_project.config.TEMP_DEBUGMODE import DEBUG_MODE
+from src.arise_project.config.debug import DEBUG_MODE
 from src.arise_project.gui.custom.pyqt_log_stream import PyQtLogStream
 from src.arise_project.gui.custom.pyqt_progress_updater import PyQtProgressUpdater, DummyProgressUpdater
 from src.arise_project.gui.custom.thread_manager import ThreadManager
@@ -46,7 +68,8 @@ from src.arise_project.model.cost_normalization import compute_cost_scales
 from src.arise_project.tools.energy_format import joules_to_wh, joules_to_kwh
 from src.arise_project.scheduler.a_star_search import astar_search, OPT_RES_PARAM_EXPANSIONS
 from src.arise_project.scheduler.depth_first_search import run_iddfs, OPT_RES_PARAM_MIN_SOLUTION_DEPTH
-from src.arise_project.scheduler.genetic_algorithms import run_nsga, OPT_RES_PARAM_HYPERVOLUME
+from src.arise_project.scheduler.genetic_algorithms import run_nsga, OPT_RES_PARAM_HYPERVOLUME, \
+    OPT_RES_PARAM_NUM_TRIALS
 
 if not DEBUG_MODE:
     from src.arise_project.scheduler.factory_dqn_training import (run_inference, run_training, OPT_RES_PARAM_REWARD)
@@ -64,6 +87,7 @@ from src.arise_project.config.paths import DIR_DATA_INPUT_ALL_SCENARIO_DIRS_PATH
     FILE_SCENARIO_SIMPLE_PLATE_FACTORY_PATH, DIR_DATA_INPUT_SC_DIR_ANALYSIS_TASK_COUNT
 
 from src.arise_project.gui.generated.main_window_generated import Ui_MainWindow
+from src.arise_project.gui.generated.about_dialog_generated import Ui_Dialog
 
 from src.arise_project.model.machines import StorageMachine, \
     ProcessingMachine, TransporterMachine, MillingMachine, CuttingMachine, DrillingMachine
@@ -117,6 +141,10 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._sim_started = False
         self._sim_start_time = time.time()
         self._sim_action_idx_sequence = []
+
+        # Undone actions, kept so the Edit > Redo menu can re-execute them. Each entry is the
+        # (task_result, action_idx) pair that was removed by the last undo.
+        self._sim_redo_stack = []
 
         self._factory_graph_fig = None
         self._factory_graph_canvas = None
@@ -193,9 +221,14 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self.pushButton_opt_auto_run.clicked.connect(self.on_click_opt_auto_run)
 
         self.action_switch_scenario_directory.triggered.connect(self.on_action_switch_scenario_directory)
-        self.action_save_scenario_to_file.triggered.connect(self.on_action_save_scenario)
         self.action_about.triggered.connect(self.on_action_show_about_dialog)
         self.action_export_analysis.triggered.connect(self.on_action_export_analysis_data)
+
+        # Edit > Undo mirrors the simulation-tab undo button; Edit > Redo re-executes the last undone action
+        self.action_undo.triggered.connect(self.on_click_sim_undo_last_action)
+        self.action_redo.triggered.connect(self.on_click_sim_redo_last_action)
+        self.action_undo.setEnabled(False)
+        self.action_redo.setEnabled(False)
 
         self._analysis_plot = AnalysisPlot(self.groupBox_analysis)
 
@@ -250,6 +283,23 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         progress_updater.text = "Done."
         progress_updater.finish()
 
+    @staticmethod
+    def _directory_contains_scenarios(directory_path: Path) -> bool:
+        """Return True if the directory holds at least one scenario (a subdir with a matching JSON)."""
+
+        if not directory_path.is_dir():
+            return False
+
+        for sub_directory_path in directory_path.iterdir():
+
+            if not sub_directory_path.is_dir():
+                continue
+
+            if (sub_directory_path / f"{sub_directory_path.name}.json").exists():
+                return True
+
+        return False
+
     def _initialize_scenario(self):
 
         self.plainTextEdit_log_output.clear()
@@ -257,6 +307,7 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._sim_started = False
         self._sim_start_time = time.time()
         self._sim_action_idx_sequence = []
+        self._sim_redo_stack = []
 
         self._current_task_result_list = []
         self._current_action_idx_list = []
@@ -270,19 +321,32 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             self._update_labels_opt_results(opt_method=opt_method, reset=True)
 
         self.tableWidget_sim_actions.clear()
-        self.tableWidget_opt_a_star_results.clear()
-        self.tableWidget_opt_dfs_results.clear()
-        self.tableWidget_opt_iddfs_results.clear()
-        self.tableWidget_opt_nsga2_results.clear()
-        self.tableWidget_opt_nsga3_results.clear()
-        self.tableWidget_opt_rl_dqn_results.clear()
-        self.tableWidget_opt_human_results.clear()
-        self.tableWidget_opt_comparison.clear()
+
+        # Reset every optimization result table. dijkstra and llm_agent were previously missing
+        # here, so their contents lingered from a different scenario after loading a new one.
+        opt_result_tables = [self.tableWidget_opt_a_star_results,
+                             self.tableWidget_opt_dijkstra_results,
+                             self.tableWidget_opt_dfs_results,
+                             self.tableWidget_opt_iddfs_results,
+                             self.tableWidget_opt_nsga2_results,
+                             self.tableWidget_opt_nsga3_results,
+                             self.tableWidget_opt_rl_dqn_results,
+                             self.tableWidget_opt_llm_agent_results,
+                             self.tableWidget_opt_human_results,
+                             self.tableWidget_opt_comparison]
+
+        for opt_result_table in opt_result_tables:
+            opt_result_table.clear()
+            opt_result_table.setRowCount(0)
+            opt_result_table.setColumnCount(0)
 
         self.pushButton_sim_execute_action.setEnabled(False)
         self.pushButton_sim_undo_last_action.setEnabled(False)
         self.pushButton_sim_reset_scenario.setEnabled(False)
         self.pushButton_sim_save_results.setEnabled(False)
+
+        self.action_undo.setEnabled(False)
+        self.action_redo.setEnabled(False)
 
         self._update_tree_widget_factory()
         self._update_tree_widget_product()
@@ -1272,26 +1336,40 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def _update_analysis_plots(self) -> None:
 
-        test_opt_res_dict_list = []
+        analysis_dict_list = []
 
         for loaded_scenario in self._loaded_scenario_list:
 
-            if OptimizationMethod.OPT_A_STAR in loaded_scenario.opt_result_dict.keys():
+            task_count = len(loaded_scenario.get_sorted_product_list()[0].target_state.processing_tasks)
 
-                opt_res = loaded_scenario.opt_result_dict[OptimizationMethod.OPT_A_STAR]
+            a_star_opt_res = loaded_scenario.opt_result_dict.get(OptimizationMethod.OPT_A_STAR)
+            nsga2_opt_res = loaded_scenario.opt_result_dict.get(OptimizationMethod.OPT_NSGA2)
+            rl_dqn_opt_res = loaded_scenario.opt_result_dict.get(OptimizationMethod.OPT_RL_DQN)
 
-                if isinstance(opt_res, OptimizationResult):
+            analysis_dict = {
+                COL_TASKS: task_count,
+                COL_A_STAR_TIME: a_star_opt_res.total_duration_seconds if isinstance(a_star_opt_res, OptimizationResult) else np.nan,
+                COL_NSGA2_TIME: nsga2_opt_res.total_duration_seconds if isinstance(nsga2_opt_res, OptimizationResult) else np.nan,
+                COL_RL_DQN_TIME: rl_dqn_opt_res.total_duration_seconds if isinstance(rl_dqn_opt_res, OptimizationResult) else np.nan,
+                COL_NSGA2_RATIO: np.nan,
+                COL_RL_DQN_RATIO: np.nan,
+            }
 
-                    test_opt_res_dict = {"NAME": loaded_scenario.name,
-                                         "ASTAR": opt_res.total_duration_seconds}
+            # Solution quality is expressed relative to the A* optimum, so it needs an A* result
+            if isinstance(a_star_opt_res, OptimizationResult) and a_star_opt_res.total_cost > 0:
 
-                    test_opt_res_dict_list.append(test_opt_res_dict)
+                if isinstance(nsga2_opt_res, OptimizationResult):
+                    analysis_dict[COL_NSGA2_RATIO] = nsga2_opt_res.total_cost / a_star_opt_res.total_cost
 
-        if len(test_opt_res_dict_list) == 0:
-            return
+                if isinstance(rl_dqn_opt_res, OptimizationResult):
+                    analysis_dict[COL_RL_DQN_RATIO] = rl_dqn_opt_res.total_cost / a_star_opt_res.total_cost
 
-        test_analysis_df = pd.DataFrame(data=test_opt_res_dict_list)
-        self._analysis_plot .update_plot(test_analysis_df, "ASTAR")
+            analysis_dict_list.append(analysis_dict)
+
+        # Always hand the (possibly empty) frame to the plot so stale content is cleared, e.g. when
+        # switching to a scenario directory without any optimization results.
+        analysis_df = pd.DataFrame(data=analysis_dict_list)
+        self._analysis_plot.update_plots(analysis_df)
 
     def on_change_checkbox_factory_distances(self):
 
@@ -1336,29 +1414,69 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             self._sim_started = True
             self._sim_start_time = time.time()
             self.pushButton_sim_reset_scenario.setEnabled(True)
-            self.pushButton_sim_undo_last_action.setEnabled(True)
 
         self._sim_action_idx_sequence.append(self._selected_action_idx)
         active_scenario.execute_action(self._selected_task_result)
 
+        # A freshly executed action invalidates any previously undone actions
+        self._sim_redo_stack = []
+
         self.pushButton_sim_execute_action.setEnabled(False)
 
         self._update_sim_all()
+        self._update_undo_redo_enabled()
 
     def on_click_sim_undo_last_action(self):
 
         active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
 
+        if len(active_scenario.task_result_history) == 0:
+            return
+
+        # Remember the undone action so Redo can re-execute it
+        undone_task_result = active_scenario.task_result_history[-1]
+
         active_scenario.undo_last_action()
 
         # TODO move action idx sequence to Scenario
+        undone_action_idx = None
         if len(self._sim_action_idx_sequence) > 0:
-            self._sim_action_idx_sequence.pop(-1)
+            undone_action_idx = self._sim_action_idx_sequence.pop(-1)
 
-        if len(active_scenario.task_result_history) == 0:
-            self.pushButton_sim_undo_last_action.setEnabled(False)
+        self._sim_redo_stack.append((undone_task_result, undone_action_idx))
 
         self._update_sim_all()
+        self._update_undo_redo_enabled()
+
+    def on_click_sim_redo_last_action(self):
+
+        if len(self._sim_redo_stack) == 0:
+            return
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        redo_task_result, redo_action_idx = self._sim_redo_stack.pop()
+
+        # Redo is only reachable after an undo, so the simulation has already been started
+        active_scenario.execute_action(redo_task_result)
+
+        if redo_action_idx is not None:
+            self._sim_action_idx_sequence.append(redo_action_idx)
+
+        self._update_sim_all()
+        self._update_undo_redo_enabled()
+
+    def _update_undo_redo_enabled(self) -> None:
+        """Sync the undo button and the Edit menu undo/redo actions with the current history."""
+
+        active_scenario = self._loaded_scenario_list[self._active_scenario_idx]
+
+        can_undo = len(active_scenario.task_result_history) > 0
+        can_redo = len(self._sim_redo_stack) > 0
+
+        self.pushButton_sim_undo_last_action.setEnabled(can_undo)
+        self.action_undo.setEnabled(can_undo)
+        self.action_redo.setEnabled(can_redo)
 
     def on_click_sim_reset_scenario(self):
 
@@ -1369,11 +1487,12 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._sim_started = False
         self._sim_start_time = time.time()
         self._sim_action_idx_sequence = []
+        self._sim_redo_stack = []
 
         self.pushButton_sim_execute_action.setEnabled(False)
-        self.pushButton_sim_undo_last_action.setEnabled(False)
 
         self._update_sim_all()
+        self._update_undo_redo_enabled()
 
     def on_click_sim_save_results(self):
 
@@ -1506,52 +1625,97 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                                                progress_bar_label=self.label_opt_progress,
                                                on_finished=self.on_opt_auto_run_complete)
 
-        self._thread_manager.run_thread(self.run_opt_auto_run, progress_updater=progress_updater,
-                                        additional_kwargs=dict())
+        # Separate updater without on_finished for the individual method runs: each run_* method
+        # calls finish() when it is done, which must not trigger the auto-run completion callback
+        method_progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                                      progress_bar_label=self.label_opt_progress)
 
-    def run_opt_auto_run(self, progress_updater: PyQtProgressUpdater):
+        # Snapshot checkbox states on the GUI thread; the worker thread must not access widgets
+        methods_to_run = {
+            OptimizationMethod.OPT_A_STAR: self.checkBox_auto_run_a_star.isChecked(),
+            OptimizationMethod.OPT_DIJKSTRA: self.checkBox_auto_run_dijkstra.isChecked(),
+            OptimizationMethod.OPT_DFS: self.checkBox_auto_run_dfs.isChecked(),
+            OptimizationMethod.OPT_IDDFS: self.checkBox_auto_run_iddfs.isChecked(),
+            OptimizationMethod.OPT_NSGA2: self.checkBox_auto_run_nsga2.isChecked(),
+            OptimizationMethod.OPT_NSGA3: self.checkBox_auto_run_nsga3.isChecked(),
+            OptimizationMethod.OPT_LLM_AGENT: self.checkBox_auto_run_llm_agent.isChecked(),
+            OptimizationMethod.OPT_RL_DQN: self.checkBox_auto_run_rl_dqn.isChecked(),
+        }
+
+        self.pushButton_opt_auto_run.setEnabled(False)
+
+        self._thread_manager.run_thread(self.run_opt_auto_run, progress_updater=progress_updater,
+                                        additional_kwargs=dict(method_progress_updater=method_progress_updater,
+                                                               methods_to_run=methods_to_run))
+
+    def run_opt_auto_run(self, progress_updater: PyQtProgressUpdater,
+                         method_progress_updater: PyQtProgressUpdater,
+                         methods_to_run: dict[OptimizationMethod, bool]):
 
         print_with_timestamp("Auto Run Optimization...")
+
+        method_runners = {
+            OptimizationMethod.OPT_A_STAR: self.run_a_star_search,
+            OptimizationMethod.OPT_DIJKSTRA: self.run_dijkstra_search,
+            OptimizationMethod.OPT_DFS: self.run_dfs,
+            OptimizationMethod.OPT_IDDFS: self.run_iddfs,
+            OptimizationMethod.OPT_NSGA2: self.run_nsga2,
+            OptimizationMethod.OPT_NSGA3: self.run_nsga3,
+            OptimizationMethod.OPT_LLM_AGENT: self.run_llm_agent_prompt,
+            OptimizationMethod.OPT_RL_DQN: self.run_rl_dqn_run_training_and_inference,
+        }
 
         for idx, scenario in enumerate(self._loaded_scenario_list):
 
             print_with_timestamp(f"-------------- SCENARIO {idx} - '{scenario.name}' --------------")
 
             self._active_scenario_idx = idx
-            self._initialize_scenario()
 
-            if self.checkBox_auto_run_a_star.isChecked():
-                self.run_a_star_search(progress_updater=progress_updater)
+            # Rebuild the objective function with this scenario's normalization scales.
+            # Deliberately NOT calling _initialize_scenario() here: it mutates GUI widgets and
+            # replaces the thread manager, neither of which is safe from this worker thread
+            time_scale, energy_scale, reliability_scale = compute_cost_scales(scenario)
+            self._objective_function = ObjectiveFunction(time_weight=self._time_weight,
+                                                         energy_weight=self._energy_weight,
+                                                         reliability_weight=self._reliability_weight,
+                                                         time_scale=time_scale,
+                                                         energy_scale=energy_scale,
+                                                         reliability_scale=reliability_scale)
 
-            if self.checkBox_auto_run_dijkstra.isChecked():
-                self.run_dijkstra_search(progress_updater=progress_updater)
+            for opt_method, run_method in method_runners.items():
 
-            if self.checkBox_auto_run_dfs.isChecked():
-                self.run_dfs(progress_updater=progress_updater)
+                if not methods_to_run.get(opt_method, False):
+                    continue
 
-            if self.checkBox_auto_run_iddfs.isChecked():
-                self.run_iddfs(progress_updater=progress_updater)
+                try:
+                    run_method(progress_updater=method_progress_updater)
 
-            if self.checkBox_auto_run_nsga2.isChecked():
-                self.run_nsga2(progress_updater=progress_updater)
+                except Exception as e:
+                    print_with_timestamp(f"Auto run: '{opt_method.name}' failed for scenario "
+                                         f"'{scenario.name}': {e}")
+                    continue
 
-            if self.checkBox_auto_run_nsga3.isChecked():
-                self.run_nsga3(progress_updater=progress_updater)
+                # Persist immediately so an interrupted batch keeps all completed results
+                opt_result = scenario.opt_result_dict[opt_method]
 
-            if self.checkBox_auto_run_llm_agent.isChecked():
-                self.run_llm_agent_prompt(progress_updater=progress_updater)
+                if opt_result is not None:
+                    opt_result.pickle_dump(output_directory=scenario.opt_result_dir_path)
+                    opt_result.to_csv(output_directory=scenario.opt_result_dir_path)
 
-            if self.checkBox_auto_run_rl_dqn.isChecked():
-                self.run_rl_dqn_run_training_and_inference(progress_updater=progress_updater)
+        progress_updater.finish()
 
     def on_opt_auto_run_complete(self):
 
         print_with_timestamp("Auto run completed... ")
 
+        self.pushButton_opt_auto_run.setEnabled(True)
+
     def on_action_show_about_dialog(self):
 
-        # TODO Add about dialog window
-        pass
+        dialog = QDialog(self._window)
+        about_ui = Ui_Dialog()
+        about_ui.setupUi(dialog)
+        dialog.exec()
 
     def on_action_switch_scenario_directory(self):
 
@@ -1559,9 +1723,20 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         scenario_dir_path_str = QFileDialog.getExistingDirectory(caption="Select Scenario Directory",
                                                                  directory=str(DIR_DATA_INPUT_ALL_SCENARIO_DIRS_PATH))
 
-        self._active_sc_directory = Path(scenario_dir_path_str)
+        # An empty string means the dialog was cancelled/closed - keep the current directory
+        # instead of switching to Path("") (the cwd), which previously froze the program.
+        if not scenario_dir_path_str:
+            return
 
-        # TODO Add check to see if chosen directory is valid
+        chosen_directory = Path(scenario_dir_path_str)
+
+        # Only switch if the directory actually contains at least one scenario, otherwise the
+        # scenario list would end up empty and later indexing into it would crash.
+        if not self._directory_contains_scenarios(chosen_directory):
+            print_with_timestamp(f"No scenarios found in '{chosen_directory}' - keeping current directory.")
+            return
+
+        self._active_sc_directory = chosen_directory
 
         progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
                                                progress_bar_label=self.label_opt_progress,
@@ -1570,11 +1745,27 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         self._thread_manager.run_thread(self._load_all_scenarios, progress_updater=progress_updater,
                                         additional_kwargs=dict())
 
-    def on_action_save_scenario(self):
-
-        print_with_timestamp("Saving scenario... (Not yet implemented)")
-
     def on_action_export_analysis_data(self):
+
+        # Show progress in the log tab and run the (potentially slow) export off the GUI thread
+        self.tabWidget_main.setCurrentIndex(self.tabWidget_main.indexOf(self.tab_log))
+
+        print_with_timestamp("Exporting analysis data (this may take a while)...")
+
+        self.action_export_analysis.setEnabled(False)
+
+        progress_updater = PyQtProgressUpdater(progress_bar=self.progressBar_opt,
+                                               progress_bar_label=self.label_opt_progress,
+                                               on_finished=self._on_export_analysis_data_complete)
+
+        self._thread_manager.run_thread(self._export_analysis_data, progress_updater=progress_updater,
+                                        additional_kwargs=dict())
+
+    def _on_export_analysis_data_complete(self) -> None:
+
+        self.action_export_analysis.setEnabled(True)
+
+    def _export_analysis_data(self, progress_updater: PyQtProgressUpdater):
 
         analysis_data_dict_list = []
 
@@ -1612,15 +1803,24 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             a_star_time_s = 0
             a_star_cost = 0
 
+            dijkstra_expansions = 0
+            dijkstra_steps = 0
+            dijkstra_time_s = 0
+            dijkstra_cost = 0
+
             nsga2_steps = 0
             nsga2_time_s = 0
+            nsga2_trials = 0
+            nsga2_time_per_trial_s = 0
             nsga2_cost = 0
             nsga2_cost_delta = 0
+            nsga2_cost_ratio = None
 
             rl_dqn_steps = 0
             rl_dqn_time_s = 0
             rl_dqn_cost = 0
             rl_dqn_cost_delta = 0
+            rl_dqn_cost_ratio = None
 
             a_star_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_A_STAR]
 
@@ -1630,12 +1830,25 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
                 a_star_time_s = a_star_opt_res.total_duration_seconds
                 a_star_cost = a_star_opt_res.total_cost
 
+            dijkstra_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_DIJKSTRA]
+
+            if dijkstra_opt_res is not None:
+                dijkstra_expansions = dijkstra_opt_res.other_params_dict[OPT_RES_PARAM_EXPANSIONS]
+                dijkstra_steps = len(dijkstra_opt_res.task_result_list)
+                dijkstra_time_s = dijkstra_opt_res.total_duration_seconds
+                dijkstra_cost = dijkstra_opt_res.total_cost
+
             nsga2_opt_res = scenario.opt_result_dict[OptimizationMethod.OPT_NSGA2]
 
             if nsga2_opt_res is not None:
 
                 nsga2_steps = len(nsga2_opt_res.task_result_list)
+
+                # total_duration_seconds covers ALL best-of-N trials; also export the per-trial mean
                 nsga2_time_s = nsga2_opt_res.total_duration_seconds
+                nsga2_trials = nsga2_opt_res.other_params_dict.get(OPT_RES_PARAM_NUM_TRIALS, 1)
+                nsga2_time_per_trial_s = nsga2_time_s / max(nsga2_trials, 1)
+
                 nsga2_cost = nsga2_opt_res.total_cost
 
 
@@ -1650,27 +1863,45 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
             if a_star_opt_res is not None and nsga2_opt_res is not None:
                 nsga2_cost_delta =  nsga2_opt_res.total_cost - a_star_opt_res.total_cost
 
+                # Relative optimality gap (1.0 = optimal), used for the solution quality plot
+                if a_star_opt_res.total_cost > 0:
+                    nsga2_cost_ratio = nsga2_opt_res.total_cost / a_star_opt_res.total_cost
+
             if a_star_opt_res is not None and rl_dqn_opt_res is not None:
                 rl_dqn_cost_delta = rl_dqn_opt_res.total_cost - a_star_opt_res.total_cost
+
+                if a_star_opt_res.total_cost > 0:
+                    rl_dqn_cost_ratio = rl_dqn_opt_res.total_cost / a_star_opt_res.total_cost
 
             scenario_overview_dict["A* Expansions"] = a_star_expansions
             scenario_overview_dict["A* Steps"] = a_star_steps
             scenario_overview_dict["A* Time (s)"] = a_star_time_s
             scenario_overview_dict["A* Cost"] = a_star_cost
 
+            scenario_overview_dict["Dijkstra Expansions"] = dijkstra_expansions
+            scenario_overview_dict["Dijkstra Steps"] = dijkstra_steps
+            scenario_overview_dict["Dijkstra Time (s)"] = dijkstra_time_s
+            scenario_overview_dict["Dijkstra Cost"] = dijkstra_cost
+
             scenario_overview_dict["NSGA2 Steps"] = nsga2_steps
+            scenario_overview_dict["NSGA2 Trials"] = nsga2_trials
             scenario_overview_dict["NSGA2 Time (s)"] = nsga2_time_s
+            scenario_overview_dict["NSGA2 Time per Trial (s)"] = nsga2_time_per_trial_s
             scenario_overview_dict["NSGA2 Cost"] = nsga2_cost
             scenario_overview_dict["NSGA2 - A* Cost"] = nsga2_cost_delta
+            scenario_overview_dict["NSGA2 / A* Cost"] = nsga2_cost_ratio
 
             scenario_overview_dict["RL DQN Steps"] = rl_dqn_steps
             scenario_overview_dict["RL DQN Time (s)"] = rl_dqn_time_s
             scenario_overview_dict["RL DQN Cost"] = rl_dqn_cost
             scenario_overview_dict["RL DQN - A* Cost"] = rl_dqn_cost_delta
+            scenario_overview_dict["RL DQN / A* Cost"] = rl_dqn_cost_ratio
 
             analysis_data_dict_list.append(scenario_overview_dict)
 
         if len(analysis_data_dict_list) == 0:
+            print_with_timestamp("No scenarios to export.")
+            progress_updater.finish()
             return
 
         analysis_data_df = pd.DataFrame(data=analysis_data_dict_list)
@@ -1679,6 +1910,8 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
         analysis_data_df.to_csv(file_output_path, sep=";")
 
         print_with_timestamp(f"Analysis data saved to file: '{file_output_path.name}'")
+
+        progress_updater.finish()
 
     def run_a_star_search(self, progress_updater: PyQtProgressUpdater):
 
@@ -1928,9 +2161,14 @@ class Ui_MainWindow_Custom(Ui_MainWindow):
 
     def _on_reload_all_scenarios_complete(self) -> None:
 
+        self.pushButton_scenario_overview_reload.setEnabled(True)
+
+        # Defensive guard: without any loaded scenario, initializing would index into an empty list
+        if len(self._loaded_scenario_list) == 0:
+            print_with_timestamp("No scenarios were loaded - nothing to initialize.")
+            return
+
         self._active_scenario_idx = 0
         self._initialize_scenario()
         self._update_table_widget_scenario_overview()
-
-        self.pushButton_scenario_overview_reload.setEnabled(True)
         print_with_timestamp("Reloaded all scenarios...")

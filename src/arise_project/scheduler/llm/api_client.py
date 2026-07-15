@@ -1,6 +1,26 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
 
 Custom LLM api client for generating responses in plain text and in JSON.
 
@@ -46,12 +66,17 @@ MODEL_PRICES_USD_PER_TOKEN_NOVEMBER_2025_DICT = {
 
 
 class Singleton(type):
-    def __init__(self, name, bases, mmbs):
-        super(Singleton, self).__init__(name, bases, mmbs)
-        self._instance = super(Singleton, self).__call__()
+    def __init__(cls, name, bases, mmbs):
+        super(Singleton, cls).__init__(name, bases, mmbs)
+        # Instantiate lazily on first use instead of at class-definition/import time, so that
+        # importing this module does not require an OpenAI API key - only actually using the
+        # client does. This keeps the rest of the application working without an '.env' file.
+        cls._instance = None
 
-    def __call__(self, *args, **kw):
-        return self._instance
+    def __call__(cls, *args, **kw):
+        if cls._instance is None:
+            cls._instance = super(Singleton, cls).__call__(*args, **kw)
+        return cls._instance
 
 
 class OpenAIGPTClient(metaclass=Singleton):

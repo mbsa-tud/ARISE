@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module defining the genetic algorithms, specifically Non-dominated Sorting Genetic Algorithms (NSGA-II / NSGA-III).
 Developed with the help of AI (partly AI-generated).
 
@@ -45,10 +66,8 @@ OPT_RES_PARAM_NUM_TRIALS = "num_trials"
 OPT_RES_PARAM_BEST_TRIAL_INDEX = "best_trial_index"
 
 # Best-of-N default: NSGA-II/III are population-based and sensitive to random initialization, so
-# a single run is not a reliable data point. 5 trials cheaply escapes an unlucky initialization
-# with diminishing returns beyond that; use more (e.g. 10-30) only when reporting mean/variance
-# for a paper rather than picking a practical default for day-to-day comparisons.
-DEFAULT_NUM_TRIALS = 5
+# a single run is not a reliable data point. 3 trials cheaply avoids an unlucky initialization
+DEFAULT_NUM_TRIALS = 3
 
 
 class FactorySequenceProblem(Problem):
@@ -515,7 +534,7 @@ if __name__ == "__main__":
 
     example_nsga_config = NSGAConfig(max_sequence_length=200,
                                      population_size=80,
-                                     number_generations=150,
+                                     number_generations=100,
                                      mutation_probability=0.15,
                                      penalty=1e4)
 

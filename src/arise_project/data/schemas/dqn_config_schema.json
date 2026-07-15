@@ -17,7 +17,8 @@
         "gradient_steps": { "type": "integer", "minimum": -1 },
         "exploration_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
         "exploration_final_eps": { "type": "number", "minimum": 0, "maximum": 1 },
-        "total_timesteps": { "type": "integer", "minimum": 1 }
+        "total_timesteps": { "type": "integer", "minimum": 1 },
+        "timesteps_per_processing_task": { "type": "integer", "minimum": 1 }
       },
       "required": [
         "policy",
@@ -30,8 +31,11 @@
         "train_freq",
         "gradient_steps",
         "exploration_fraction",
-        "exploration_final_eps",
-        "total_timesteps"
+        "exploration_final_eps"
+      ],
+      "anyOf": [
+        { "required": ["total_timesteps"] },
+        { "required": ["timesteps_per_processing_task"] }
       ],
       "additionalProperties": false
     },

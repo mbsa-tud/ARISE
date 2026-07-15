@@ -1,0 +1,31 @@
+{
+  "environment": {
+    "time_weight": 0.3333333333333333,
+    "energy_weight": 0.3333333333333333,
+    "reliability_weight": 0.3333333333333333,
+    "max_steps": 200,
+    "training_seed": 0,
+    "evaluation_seed": 123,
+    "inference_seed": 999,
+    "output_action_state": false
+  },
+  "training": {
+    "policy": "MultiInputPolicy",
+    "learning_rate": 0.0003,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "gamma": 0.99,
+    "target_update_interval": 1000,
+    "train_freq": 16,
+    "gradient_steps": 8,
+    "exploration_fraction": 0.2,
+    "exploration_final_eps": 0.05,
+    "total_timesteps": 250000
+  },
+  "evaluation": {
+    "eval_freq": 5000,
+    "deterministic": true,
+    "render": false
+  }
+}

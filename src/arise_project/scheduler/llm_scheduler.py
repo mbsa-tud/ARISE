@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Scheduling using a large language model (LLM) via API
 
 Author: Patrick Fischer
@@ -10,6 +31,7 @@ Version: 0.0.3
 __author__ = "Patrick Fischer"
 __version__ = "0.0.3"
 
+import os
 import time
 import json
 from pathlib import Path
@@ -265,6 +287,16 @@ def run_iterative_llm_scheduler(scenario_file_path: Path,
 
     progress_updater.text = "Start iterative LLM scheduling"
     progress_updater.percentage = 0
+
+    # The LLM agent is the only feature that needs an API key. If none is configured, skip it
+    # gracefully (the rest of the application works without it) instead of raising an exception.
+    if not os.environ.get("OPENAI_API_KEY"):
+        print_with_timestamp("LLM agent unavailable: no OpenAI API key found. Create the file "
+                             "'src/arise_project/scheduler/llm/.env' containing a line "
+                             "'OPENAI_API_KEY=...' to enable it.")
+        progress_updater.text = "LLM agent unavailable (no API key)."
+        progress_updater.percentage = 100
+        return None
 
     scn = ScenarioCore(file_path=scenario_file_path, reset_class=True)
 

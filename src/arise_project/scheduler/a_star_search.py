@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module defining an algorithm to traverse the state graph using A* algorithm.
 
 Developed with the help of AI (partly AI-generated).
@@ -39,7 +60,7 @@ HeuristicFunction = Callable[[Any], float]
 
 class PriorityQueueItem:
 
-    def __init__(self, f: float, g: float, counter: int, path: tuple[int, ...], state_key: int,
+    def __init__(self, f: float, g: float, counter: int, path: tuple[int, ...], state_key: tuple,
                  time_sum: float, energy_sum: float, sequence_reliability: float,
                  task_result_history: list[TaskResult]):
         self._f = f
@@ -85,7 +106,7 @@ class PriorityQueueItem:
         return self._path
 
     @property
-    def state_key(self) -> int:
+    def state_key(self) -> tuple:
         return self._state_key
 
     @property
@@ -247,7 +268,11 @@ def astar_search(
         verbose: bool = True,
         progress_updater: PyQtProgressUpdater = DummyProgressUpdater()) -> OptimizationResult | None:
 
-    progress_updater.text = "Start A* search"
+    # Dijkstra is A* with h(n) = 0; the returned result must carry the method that actually ran
+    opt_method = OptimizationMethod.OPT_A_STAR if use_heuristic else OptimizationMethod.OPT_DIJKSTRA
+    method_str = "A*" if use_heuristic else "Dijkstra"
+
+    progress_updater.text = f"Start {method_str} search"
     progress_updater.percentage = 0
 
     start_time = time.time()
@@ -262,8 +287,10 @@ def astar_search(
     else:
         h0 = 0.0
 
-    # Items contained within dict are hashable (sorting to keep hash stable and deterministic)
-    start_key = hash(tuple(sorted(root_scn.get_product_states().items())))
+    # The sorted items tuple itself is the key (ProductState is hashable and compares by value):
+    # unlike hash(...), a dict keyed by the tuple falls back to __eq__ on hash collisions, so two
+    # distinct states can never silently share a best_g entry (which would break optimality)
+    start_key = tuple(sorted(root_scn.get_product_states().items()))
 
     # Build the priority queue based on a binary heap data structure
     priority_queue: list[PriorityQueueItem] = []
@@ -275,19 +302,19 @@ def astar_search(
     heapq.heappush(priority_queue, first_pq_item)
 
     # Best g found for each state_key
-    best_g: dict[int, float] = {start_key: 0.0}
+    best_g: dict[tuple, float] = {start_key: 0.0}
 
     expansions = 0
     stale_pops = 0
 
-    progress_updater.text = "Running A* ..."
+    progress_updater.text = f"Running {method_str} ..."
     progress_updater.percentage = 25
 
     while priority_queue:
 
         if time_limit_s is not None and (time.time() - start_time) > time_limit_s:
             if verbose:
-                print("[A*] Time limit reached; terminating.")
+                print(f"[{method_str}] Time limit reached; terminating.")
             break
 
         smallest_pq_item = heapq.heappop(priority_queue)
@@ -331,7 +358,7 @@ def astar_search(
                                       other_params_dict={OPT_RES_PARAM_EXPANSIONS: expansions,
                                                          OPT_RES_PARAM_STALE_POPS: stale_pops},
                                       total_duration_seconds=(time.time() - start_time),
-                                      opt_method=OptimizationMethod.OPT_A_STAR)
+                                      opt_method=opt_method)
 
         if expansions % 10 == 0:
             progress_updater.text = f"Expansions: {expansions}"
@@ -341,7 +368,7 @@ def astar_search(
 
         if max_expansions is not None and expansions > max_expansions:
             if verbose:
-                print("[A*] Expansion limit reached; terminating.")
+                print(f"[{method_str}] Expansion limit reached; terminating.")
             break
 
         # For each feasible action, compute child path and costs
@@ -367,8 +394,8 @@ def astar_search(
             g_child = objective_function(time_cost=child_time_sum, energy_cost=child_energy_sum,
                                          reliability=child_sequence_reliability)
 
-            # Items contained within dict are hashable (sorting to keep hash stable and deterministic)
-            child_key = hash(tuple(sorted(scn.get_product_states().items())))
+            # Sorted items tuple as key (see start_key above for why not hash(...))
+            child_key = tuple(sorted(scn.get_product_states().items()))
 
             # Prune by best g
             prev_best = best_g.get(child_key, float("inf"))

@@ -1,0 +1,189 @@
+{
+  "scenario_name": "Plate E - 1S/2D/2C/2M/1A",
+  "scenario_note": "Two Products",
+  "variability_configurations": [
+    {
+      "name": "default",
+      "use_normal_distribution": false,
+      "uniform_time_variability": 0.0,
+      "normal_dist_sigma_factor": 0.0
+    }
+  ],
+  "factory": {
+    "storage_machines": [
+      {
+        "class": "StorageMachine",
+        "name": "ST1",
+        "x": 0.0,
+        "y": 4.0,
+        "skill_params": {
+          "store_skill": {
+            "execution_speed": 1.0,
+            "nominal_power_draw": 200.0,
+            "reliability": 1.0,
+            "variability": "default"
+          },
+          "retrieve_skill": {
+            "execution_speed": 1.0,
+            "nominal_power_draw": 200.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      }
+    ],
+    "processing_machines": [
+      {
+        "class": "MillingMachine",
+        "name": "MM1",
+        "x": 2.0,
+        "y": 2.0,
+        "skill_params": {
+          "milling_skill": {
+            "execution_speed": 2.0,
+            "nominal_power_draw": 1200.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "MillingMachine",
+        "name": "MM2",
+        "x": 4.5,
+        "y": 2.0,
+        "skill_params": {
+          "milling_skill": {
+            "execution_speed": 2.0,
+            "nominal_power_draw": 1200.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "CuttingMachine",
+        "name": "CM1",
+        "x": 7.0,
+        "y": 5.0,
+        "skill_params": {
+          "cutting_skill": {
+            "execution_speed": 8.0,
+            "nominal_power_draw": 3000.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "CuttingMachine",
+        "name": "CM2",
+        "x": 7.0,
+        "y": 3.0,
+        "skill_params": {
+          "cutting_skill": {
+            "execution_speed": 8.0,
+            "nominal_power_draw": 3000.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM1",
+        "x": 2.0,
+        "y": 6.0,
+        "skill_params": {
+          "drilling_skill": {
+            "execution_speed": 3.0,
+            "nominal_power_draw": 500.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      },
+      {
+        "class": "DrillingMachine",
+        "name": "DM2",
+        "x": 4.5,
+        "y": 6.0,
+        "skill_params": {
+          "drilling_skill": {
+            "execution_speed": 3.0,
+            "nominal_power_draw": 500.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        }
+      }
+    ],
+    "transporter_machines": [
+      {
+        "class": "AutomatedGuidedVehicle",
+        "name": "AGV1",
+        "skill_params": {
+          "transport_skill": {
+            "execution_speed": 1.0,
+            "nominal_power_draw": 300.0,
+            "reliability": 1.0,
+            "variability": "default"
+          }
+        },
+        "from": [
+          "*"
+        ],
+        "to": [
+          "*"
+        ]
+      }
+    ]
+  },
+  "product": {
+    "class": "Plate",
+    "count": 2,
+    "starting_location": "ST1",
+    "target_location": "ST1",
+    "params": {
+      "width": 125,
+      "height": 100
+    },
+    "processing_tasks": [
+      {
+        "class": "DrillingTask",
+        "name": "DT1",
+        "preconditions": [],
+        "params": {
+          "center_x": 50,
+          "center_y": 50,
+          "radius": 15
+        }
+      },
+      {
+        "class": "MillingTask",
+        "name": "MT1",
+        "preconditions": [],
+        "params": {
+          "center_x": 0,
+          "center_y": 100,
+          "radius": 20
+        }
+      },
+      {
+        "class": "CuttingTask",
+        "name": "CT1",
+        "preconditions": [
+          {
+            "task_name": "DT1"
+          }
+        ],
+        "params": {
+          "start_x": 30,
+          "start_y": 0,
+          "end_x": 70,
+          "end_y": 100
+        }
+      }
+    ]
+  }
+}

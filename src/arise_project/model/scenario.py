@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module containing the scenario class definition
 
 Author: Patrick Fischer
@@ -802,18 +823,19 @@ class Scenario(ScenarioCore):
 
     def calculate_total_state_count(self) -> int:
 
-        # TODO This assumes that all products are the same, which may not necessarily be the case
-        first_product = self.get_sorted_product_list()[0]
-        product_processing_task_count = len(first_product.target_state.processing_tasks)
-
-        # Cardinality of the power set (example: {}, {CT1}, ... {CT1, DT1},... {CT1, DT1, MT1})
-        product_state_combinations = 2 ** product_processing_task_count
-
         # Each stationary machine is a possible location
         location_count = len(self._factory.stationary_machine_by_id_dict)
 
-        # Product may have any state at any location, therefore multiplication
-        total_state_count = product_state_combinations * location_count
+        # Per product: cardinality of the power set of its processing tasks (example: {}, {CT1},
+        # ... {CT1, DT1},... {CT1, DT1, MT1}) times the possible locations. Products combine
+        # independently, so the system state count is the product over all products
+        # (upper bound: precondition-violating task subsets are counted as well)
+        total_state_count = 1
+
+        for product in self.get_sorted_product_list():
+
+            product_processing_task_count = len(product.target_state.processing_tasks)
+            total_state_count *= (2 ** product_processing_task_count) * location_count
 
         return total_state_count
 
@@ -888,7 +910,16 @@ class Scenario(ScenarioCore):
         for combo in product(*sets):
             yield {keys[i]: combo[i] for i in range(len(keys))}
 
-    def calculate_total_transition_count(self) -> int:
+    def calculate_total_transition_count(self, max_state_count: int = 2_000_000) -> int:
+
+        # Enumerating all system states is exponential in the number of processing tasks;
+        # return the sentinel -1 instead of hanging for very large scenarios
+        if self.calculate_total_state_count() > max_state_count:
+            return -1
+
+        # The enumeration below overwrites product states; save them for restoration afterwards
+        saved_states = {product_id: product.current_state
+                        for product_id, product in self.product_by_id_dict.items()}
 
         total_count = 0
         result_dict = self.get_all_possible_product_states()
@@ -904,6 +935,9 @@ class Scenario(ScenarioCore):
                 new_dict[product_obj.unique_id] = product_obj
 
             total_count += self.calculate_feasible_action_count_for_product_states(new_dict)
+
+        for product_id, saved_state in saved_states.items():
+            self.product_by_id_dict[product_id].current_state = saved_state
 
         return total_count
 

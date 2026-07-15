@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module defining classes of products
 
 Author: Patrick Fischer
@@ -240,7 +261,11 @@ class Plate(Product):
         return img
 
     @staticmethod
-    def _draw_line(img: np.ndarray, x0: int, y0: int, x1: int, y1: int):
+    def _draw_line(img: np.ndarray, x0: float, y0: float, x1: float, y1: float):
+
+        # Rasterize to integer pixels: task geometry may be fractional (e.g. plate center 62.5),
+        # but Bresenham needs integer coordinates for indexing and for the termination check
+        x0, y0, x1, y1 = int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1))
 
         dx = abs(x1 - x0)
         dy = -abs(y1 - y0)

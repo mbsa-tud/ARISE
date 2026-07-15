@@ -1,6 +1,27 @@
 # -*- coding: utf-8 -*-
 
 """
+ICM ARISE Factory Simulation - A modular software platform that decouples simulation from scheduling and enables fair
+benchmarking of heterogeneous multi-objective optimization methods.
+
+Copyright (C) 2026 Institute of Industrial Automation and Software Engineering, University of Stuttgart
+Primary Author: Patrick Fischer
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------------------------------------------------------
+
 Module containing the functions used to train DQN and for inference.
 Developed with the help of AI (partly AI-generated).
 
@@ -90,6 +111,17 @@ def run_training(scenario_file_path: Path) -> float:
     # Load a scenario (product and factory)
     scenario = ScenarioCore(file_path=scenario_file_path)
 
+    # Time step budget: scaled linearly with problem size via "timesteps_per_processing_task"
+    # (matching the linear growth of the action catalog), or fixed via "total_timesteps"
+    timesteps_per_task = dqn_config_dict["training"].get("timesteps_per_processing_task")
+
+    if timesteps_per_task is not None:
+        total_timesteps = timesteps_per_task * len(scenario.get_sorted_processing_tasks_list())
+        print(f"Time step budget: {timesteps_per_task} x "
+              f"{len(scenario.get_sorted_processing_tasks_list())} processing tasks = {total_timesteps}")
+    else:
+        total_timesteps = dqn_config_dict["training"]["total_timesteps"]
+
     time_scale, energy_scale, reliability_scale = compute_cost_scales(scenario)
     objective_function = ObjectiveFunction(time_weight=dqn_config_dict["environment"]["time_weight"],
                                            energy_weight=dqn_config_dict["environment"]["energy_weight"],
@@ -165,7 +197,7 @@ def run_training(scenario_file_path: Path) -> float:
     start_time = time.time()
 
     # Start training the model
-    model.learn(total_timesteps=dqn_config_dict["training"]["total_timesteps"], callback=eval_cb)
+    model.learn(total_timesteps=total_timesteps, callback=eval_cb)
 
     training_duration_seconds = time.time() - start_time
     training_duration_str = duration_formatting(training_duration_seconds)

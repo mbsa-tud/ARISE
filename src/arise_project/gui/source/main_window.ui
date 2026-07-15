@@ -80,6 +80,9 @@
              <height>31</height>
             </rect>
            </property>
+           <property name="toolTip">
+            <string>Warning: This may take a few minutes!</string>
+           </property>
            <property name="text">
             <string>Show states / transitions</string>
            </property>
@@ -4794,7 +4797,7 @@
        <attribute name="title">
         <string>Config</string>
        </attribute>
-       <widget class="QGroupBox" name="groupBox">
+       <widget class="QGroupBox" name="groupBox_auto_run">
         <property name="geometry">
          <rect>
           <x>20</x>
@@ -4804,14 +4807,14 @@
          </rect>
         </property>
         <property name="title">
-         <string>Auto Run (Analysis)</string>
+         <string>Automated Optimization for Analysis</string>
         </property>
         <widget class="QCheckBox" name="checkBox_auto_run_a_star">
          <property name="geometry">
           <rect>
            <x>20</x>
            <y>30</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4827,7 +4830,7 @@
           <rect>
            <x>20</x>
            <y>90</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4840,7 +4843,7 @@
           <rect>
            <x>20</x>
            <y>110</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4856,7 +4859,7 @@
           <rect>
            <x>20</x>
            <y>130</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4869,7 +4872,7 @@
           <rect>
            <x>20</x>
            <y>150</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4904,7 +4907,7 @@
           <rect>
            <x>20</x>
            <y>50</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4917,7 +4920,7 @@
           <rect>
            <x>20</x>
            <y>170</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4930,7 +4933,7 @@
           <rect>
            <x>20</x>
            <y>70</y>
-           <width>80</width>
+           <width>111</width>
            <height>20</height>
           </rect>
          </property>
@@ -4964,8 +4967,6 @@
      <string>File</string>
     </property>
     <addaction name="action_switch_scenario_directory"/>
-    <addaction name="action_save_scenario_to_file"/>
-    <addaction name="separator"/>
     <addaction name="action_export_analysis"/>
    </widget>
    <widget class="QMenu" name="menu_edit">
@@ -4985,11 +4986,6 @@
     <string>Switch scenario directory...</string>
    </property>
   </action>
-  <action name="action_save_scenario_to_file">
-   <property name="text">
-    <string>Save scenario</string>
-   </property>
-  </action>
   <action name="action_about">
    <property name="text">
     <string>About</string>
@@ -4997,17 +4993,17 @@
   </action>
   <action name="action_undo">
    <property name="text">
-    <string>Undo</string>
+    <string>Undo action</string>
    </property>
   </action>
   <action name="action_redo">
    <property name="text">
-    <string>Redo</string>
+    <string>Redo action</string>
    </property>
   </action>
   <action name="action_export_analysis">
    <property name="text">
-    <string>Export Analysis...</string>
+    <string>Export analysis to csv...</string>
    </property>
   </action>
  </widget>
